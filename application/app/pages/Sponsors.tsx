@@ -6,6 +6,7 @@ import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
+import { EmailField, validateEmail } from "@/app/components/EmailField";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
@@ -197,6 +198,11 @@ export function Sponsors() {
       fail("Please fill in your company, name, email, and a message, and agree to the Privacy Policy.");
       return;
     }
+    const emailError = validateEmail(data.email, true, false);
+    if (emailError) {
+      fail(emailError);
+      return;
+    }
     submitting();
 
     const { error: insertError } = await supabase.from("sponsorship_enquiries").insert(data);
@@ -357,10 +363,7 @@ export function Sponsors() {
                   <label htmlFor="sp-name">Contact name</label>
                   <input id="sp-name" name="name" type="text" placeholder="First and last" autoComplete="name" required />
                 </div>
-                <div className="field">
-                  <label htmlFor="sp-email">Work email</label>
-                  <input id="sp-email" name="email" type="email" placeholder="you@firm.com" autoComplete="email" required />
-                </div>
+                <EmailField id="sp-email" label="Work email" placeholder="you@firm.com" />
                 <div className="field">
                   <label htmlFor="sp-message">Message</label>
                   <textarea id="sp-message" name="message" placeholder="What are you interested in?" required />

@@ -5,6 +5,7 @@ import { useReveal } from "@/app/hooks/useReveal";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
+import { EmailField, validateEmail } from "@/app/components/EmailField";
 import { supabase } from "@/lib/supabase";
 
 const SUCCESS_TOAST_MS = 10000;
@@ -69,6 +70,12 @@ export function Signup() {
 
     if (!fullName || !email || !course || !year || !consentPrivacy) {
       fail("Please fill in your name, university email, course, year of study, and agree to the Privacy Policy.");
+      return;
+    }
+
+    const emailError = validateEmail(email, true, true);
+    if (emailError) {
+      fail(emailError);
       return;
     }
 
@@ -149,17 +156,12 @@ export function Signup() {
                 />
               </div>
 
-              <div className="field">
-                <label htmlFor="su-email">University email *</label>
-                <input
-                  id="su-email"
-                  name="email"
-                  type="email"
-                  placeholder="you@student.manchester.ac.uk"
-                  autoComplete="email"
-                  required
-                />
-              </div>
+              <EmailField
+                id="su-email"
+                label="University email *"
+                placeholder="you@student.manchester.ac.uk"
+                requireManchesterDomain
+              />
 
               <div className="field">
                 <label htmlFor="su-course">Course *</label>
