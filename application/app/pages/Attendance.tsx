@@ -5,6 +5,7 @@ import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
+import { EmailField, validateEmail } from "@/app/components/EmailField";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
@@ -65,6 +66,12 @@ export function Attendance() {
           ? "Please tell us which event you attended, fill in your name, email, course, and year of study, rate the event, and agree to the Privacy Policy."
           : "Please select the event you attended, fill in your name, email, course, and year of study, rate the event, and agree to the Privacy Policy."
       );
+      return;
+    }
+
+    const emailError = validateEmail(email, true, true);
+    if (emailError) {
+      fail(emailError);
       return;
     }
 
@@ -200,17 +207,12 @@ export function Attendance() {
                     />
                   </div>
 
-                  <div className="field">
-                    <label htmlFor="att-email">University email *</label>
-                    <input
-                      id="att-email"
-                      name="email"
-                      type="email"
-                      placeholder="you@student.manchester.ac.uk"
-                      autoComplete="email"
-                      required
-                    />
-                  </div>
+                  <EmailField
+                    id="att-email"
+                    label="University email *"
+                    placeholder="you@student.manchester.ac.uk"
+                    requireManchesterDomain
+                  />
 
                   <div className="field">
                     <label htmlFor="att-course">Course *</label>

@@ -6,6 +6,7 @@ import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
+import { EmailField, validateEmail } from "@/app/components/EmailField";
 import { supabase } from "@/lib/supabase";
 
 export function Contact() {
@@ -34,6 +35,12 @@ export function Contact() {
 
     if (!data.name || !data.email || !data.message || !consentPrivacy) {
       fail("Please fill in your name, email, and a message, and agree to the Privacy Policy.");
+      return;
+    }
+
+    const emailError = validateEmail(data.email, true, false);
+    if (emailError) {
+      fail(emailError);
       return;
     }
 
@@ -88,10 +95,7 @@ export function Contact() {
                   <label htmlFor="contact-name">Name</label>
                   <input id="contact-name" name="name" type="text" placeholder="First and last" autoComplete="name" required />
                 </div>
-                <div className="field">
-                  <label htmlFor="contact-email">Email</label>
-                  <input id="contact-email" name="email" type="email" placeholder="you@manchester.ac.uk" autoComplete="email" required />
-                </div>
+                <EmailField id="contact-email" label="Email" placeholder="you@manchester.ac.uk" />
                 <div className="field">
                   <label htmlFor="contact-message">Message</label>
                   <textarea id="contact-message" name="message" placeholder="Tell us a bit more…" required />

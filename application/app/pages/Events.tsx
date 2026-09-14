@@ -10,6 +10,7 @@ import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
+import { EmailField, validateEmail } from "@/app/components/EmailField";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { Modal } from "@/app/components/Modal";
@@ -63,6 +64,12 @@ function EventSignupForm({ eventId }: { eventId: string }) {
       return;
     }
 
+    const emailError = validateEmail(email, true, false);
+    if (emailError) {
+      fail(emailError);
+      return;
+    }
+
     submitting();
 
     const { error: insertError } = await supabase
@@ -104,10 +111,7 @@ function EventSignupForm({ eventId }: { eventId: string }) {
         <label htmlFor={`su-name-${eventId}`}>Full name *</label>
         <input id={`su-name-${eventId}`} name="name" type="text" autoComplete="name" required />
       </div>
-      <div className="field">
-        <label htmlFor={`su-email-${eventId}`}>Email *</label>
-        <input id={`su-email-${eventId}`} name="email" type="email" autoComplete="email" required />
-      </div>
+      <EmailField id={`su-email-${eventId}`} label="Email *" />
       <div className="field">
         <label htmlFor={`su-notes-${eventId}`}>Notes (optional)</label>
         <textarea id={`su-notes-${eventId}`} name="notes" />
