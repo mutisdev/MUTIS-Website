@@ -4,6 +4,7 @@ import { useReveal } from "@/app/hooks/useReveal";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
+import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
@@ -56,12 +57,13 @@ export function Attendance() {
     const course = (form.elements.namedItem("course") as HTMLInputElement).value.trim();
     const year = (form.elements.namedItem("year") as HTMLSelectElement).value;
     const comments = (form.elements.namedItem("comments") as HTMLTextAreaElement).value.trim();
+    const consentPrivacy = (form.elements.namedItem("consent-privacy") as HTMLInputElement).checked;
 
-    if (!eventId || (eventId === OTHER_EVENT && !otherEventName) || !name || !email || !course || !year || !rating) {
+    if (!eventId || (eventId === OTHER_EVENT && !otherEventName) || !name || !email || !course || !year || !rating || !consentPrivacy) {
       fail(
         eventId === OTHER_EVENT
-          ? "Please tell us which event you attended, fill in your name, email, course, and year of study, and rate the event."
-          : "Please select the event you attended, fill in your name, email, course, and year of study, and rate the event."
+          ? "Please tell us which event you attended, fill in your name, email, course, and year of study, rate the event, and agree to the Privacy Policy."
+          : "Please select the event you attended, fill in your name, email, course, and year of study, rate the event, and agree to the Privacy Policy."
       );
       return;
     }
@@ -282,6 +284,8 @@ export function Attendance() {
                       placeholder="What did you enjoy? What could be improved?"
                     />
                   </div>
+
+                  <PrivacyConsent id="att-consent-privacy" />
 
                   <FormFeedback status={status} error={error} />
 

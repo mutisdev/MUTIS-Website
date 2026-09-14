@@ -1,26 +1,57 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
+import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
-// Company destinations — shown as logo bubbles. Replace text with <img> once logo assets are available.
-const DESTINATION_GROUPS = [
-  {
-    category: "Investment Banking",
-    firms: ["Goldman Sachs", "JPMorgan", "Morgan Stanley", "Houlihan Lokey", "Rothschild & Co", "UBS", "Bank of America"],
-  },
-  {
-    category: "Markets & Asset Management",
-    firms: ["BlackRock", "Barclays", "Invesco", "BNY"],
-  },
-  {
-    category: "Advisory & Consulting",
-    firms: ["Deloitte", "KPMG", "PwC"],
-  },
-];
-
 type AlumniRow = Tables<"alumni">;
+type NetworkLogoRow = Tables<"network_logos">;
+
+function initialsFromName(name: string) {
+  const initials = name
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+  return initials || "CO";
+}
+
+function NetworkLogoBubble({ logo }: { logo: NetworkLogoRow }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 96,
+        height: 56,
+        padding: "8px 14px",
+        border: "1px solid var(--hair)",
+        borderRadius: 999,
+        background: "rgba(255,255,255,0.02)",
+      }}
+      title={logo.company_name}
+    >
+      {failed ? (
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          {initialsFromName(logo.company_name)}
+        </span>
+      ) : (
+        <img
+          src={logo.logo_url}
+          alt={logo.company_name}
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+        />
+      )}
+    </span>
+  );
+}
 
 function alumniPhotoUrl(id: string) {
   return supabase.storage.from("alumni_photos").getPublicUrl(`${id}.jpeg`).data.publicUrl;
@@ -76,6 +107,24 @@ export function OurNetwork() {
   const [members, setMembers] = useState<AlumniRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [logos, setLogos] = useState<NetworkLogoRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("network_logos")
+      .select("*")
+      .eq("is_published", true)
+      .order("display_order")
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) console.error("Failed to load network logos", error);
+        setLogos(data ?? []);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,10 +181,11 @@ export function OurNetwork() {
   const hasFilters = filterRole || filterFirm || filterLocation;
 
   useReveal([members.length, isLoading, loadError]);
+  const bgImage = usePageBackgroundImage("network");
 
   return (
     <>
-      <section className="page-hero">
+      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
         <div className="page-hero-inner">
           <div>
             <div className="crumb">
@@ -163,36 +213,17 @@ export function OurNetwork() {
             This list is indicative, not exhaustive.
           </p>
 
-          {DESTINATION_GROUPS.map((group) => (
-            <div key={group.category} className="r-up" style={{ marginTop: 32 }}>
-              <div style={{ fontSize: 10, letterSpacing: "0.28em", textTransform: "uppercase", color: "var(--ink-soft)", marginBottom: 14 }}>
-                {group.category}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                {group.firms.map((firm) => (
-                  <span
-                    key={firm}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "10px 18px",
-                      border: "1px solid var(--hair)",
-                      borderRadius: 4,
-                      fontFamily: "var(--font-display)",
-                      fontSize: 13,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                      lineHeight: 1,
-                      /* Swap for <img> once logo assets are available */
-                    }}
-                  >
-                    {firm}
-                  </span>
-                ))}
-              </div>
+          {logos.length === 0 ? (
+            <p className="lede r-up" style={{ marginTop: 24, color: "var(--ink-soft)" }}>
+              We&apos;re building out this list — check back soon.
+            </p>
+          ) : (
+            <div className="r-up" style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 32 }}>
+              {logos.map((logo) => (
+                <NetworkLogoBubble logo={logo} key={logo.id} />
+              ))}
             </div>
-          ))}
+          )}
         </div>
       </section>
 

@@ -9,11 +9,12 @@ import { Link } from "react-router";
 import { useTilt } from "../hooks/useTilt";
 import { useSiteSettings } from "../hooks/useSiteSettings";
 import { UpcomingEventBanner } from "../components/UpcomingEventBanner";
+import { FreshersFairBanner } from "../components/FreshersFairBanner";
+import { usePageBackgroundImage } from "../hooks/usePageBackgrounds";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
 type SponsorRow = Tables<"sponsors">;
-type HomeProgramRow = Tables<"home_programs">;
 
 // ---- Utilities ----
 
@@ -79,11 +80,15 @@ function Hero() {
   const intro = 1;
   const fgOpacity = 1;
   const { settings } = useSiteSettings();
+  const bgImage = usePageBackgroundImage("home");
 
   return (
     <section className="pm-hero">
       {/* Background image (static, no parallax) */}
-      <div className="pm-hero-bg" style={{ transform: "scale(1.1)" }} />
+      <div
+        className="pm-hero-bg"
+        style={{ transform: "scale(1.1)", ...(bgImage ? { backgroundImage: `url(${bgImage})` } : {}) }}
+      />
       <div className="pm-hero-overlay" />
       <div className="pm-hero-grain" aria-hidden="true" />
 
@@ -200,88 +205,6 @@ function StatsStrip() {
             <div className="pm-stat-label">{s.label}</div>
           </div>
         ))}
-      </div>
-    </section>
-  );
-}
-
-// ---- What We Do ----
-
-function WhatWeDo() {
-  const [ref, inView] = useInView<HTMLElement>({ threshold: 0.15 });
-  const t = inView ? 1 : 0;
-  const [programs, setPrograms] = useState<HomeProgramRow[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    supabase
-      .from("home_programs")
-      .select("*")
-      .eq("is_published", true)
-      .order("display_order")
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) console.error("Failed to load home programs", error);
-        setPrograms(data ?? []);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return (
-    <section className="pm-about" ref={ref}>
-      <div className="pm-about-inner">
-        <div className="pm-about-left">
-          <div
-            className="pm-eyebrow"
-            style={{ opacity: t, transform: `translateY(${(1 - t) * 14}px)`, transition: "opacity 0.7s ease, transform 0.7s ease" }}
-          >
-            What We Do
-          </div>
-          <h2 className="pm-about-heading">
-            {["Practical", "Finance", "Real Stakes"].map((line, i) => (
-              <span className="pm-reveal-line" key={i}>
-                <span style={{
-                  display: "inline-block",
-                  color: i === 2 ? "var(--pm-accent)" : "#021967",
-                  transform: `translateY(${t ? "0%" : "108%"})`,
-                  transition: `transform 1s cubic-bezier(.22,1,.36,1) ${i * 0.12}s`,
-                }}>
-                  {line}
-                </span>
-              </span>
-            ))}
-          </h2>
-          <p
-            className="pm-about-lede"
-            style={{ opacity: t, transform: `translateY(${t ? "0px" : "20px"})`, transition: "opacity 0.9s ease 0.3s, transform 0.9s ease 0.3s" }}
-          >
-            MUTIS is built around one question: what does it actually take to succeed
-            in finance? The answer is practice, access, and real responsibility. Not
-            theory alone.
-          </p>
-        </div>
-
-        <div className="pm-programs">
-          {programs.map((p, i) => (
-            <div
-              className="pm-program"
-              key={p.id}
-              style={{
-                opacity: t,
-                transform: `translateY(${t ? "0px" : "24px"})`,
-                transition: `opacity 0.8s ease ${0.3 + i * 0.1}s, transform 0.8s cubic-bezier(.22,1,.36,1) ${0.3 + i * 0.1}s`,
-              }}
-            >
-              <div className="pm-program-num">{String(i + 1).padStart(2, "0")}</div>
-              <div className="pm-program-body">
-                <div className="pm-program-title">{p.title}</div>
-                <div className="pm-program-desc">{p.description}</div>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   );
@@ -517,12 +440,12 @@ export function Home() {
     <>
       <Hero />
       <StatsStrip />
-      <WhatWeDo />
       <EventsSection />
       <SponsorsStrip />
       {/* PLACEHOLDER: Subsidiary / org structure diagram — insert asset here */}
       <FinalCTA />
       <UpcomingEventBanner />
+      <FreshersFairBanner />
     </>
   );
 }

@@ -15,6 +15,7 @@ import { Sponsors } from "./pages/Sponsors";
 import { Articles } from "./pages/Articles";
 import { ArticleDetail } from "./pages/ArticleDetail";
 import { Join } from "./pages/Join";
+import { Signup } from "./pages/Signup";
 import { Contact } from "./pages/Contact";
 import { NotFound } from "./pages/NotFound";
 import { Alumni } from "./pages/Alumni";
@@ -97,6 +98,10 @@ export const router = createBrowserRouter([
                 lazy: () => import("./admin/pages/Alumni").then((m) => ({ Component: m.Alumni })),
               },
               {
+                path: "network-logos",
+                lazy: () => import("./admin/pages/NetworkLogos").then((m) => ({ Component: m.NetworkLogos })),
+              },
+              {
                 path: "presidents",
                 lazy: () => import("./admin/pages/PreviousPresidents").then((m) => ({ Component: m.PreviousPresidents })),
               },
@@ -141,6 +146,14 @@ export const router = createBrowserRouter([
                 lazy: () => import("./admin/pages/Submissions").then((m) => ({ Component: m.Submissions })),
               },
               {
+                path: "membership-signups",
+                lazy: () => import("./admin/pages/MembershipSignups").then((m) => ({ Component: m.MembershipSignups })),
+              },
+              {
+                path: "page-backgrounds",
+                lazy: () => import("./admin/pages/PageBackgrounds").then((m) => ({ Component: m.PageBackgrounds })),
+              },
+              {
                 path: "site-settings",
                 lazy: () => import("./admin/pages/SiteSettings").then((m) => ({ Component: m.SiteSettings })),
               },
@@ -180,6 +193,7 @@ export const router = createBrowserRouter([
       { path: "gallery", Component: Gallery },
       { path: "recordings", Component: Recordings },
       { path: "join", Component: Join },
+      { path: "signup", Component: Signup },
       { path: "contact", Component: Contact },
       { path: "meif", Component: MEIF },
       { path: "wif", Component: WIF },

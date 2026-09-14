@@ -1,13 +1,16 @@
 import { type FormEvent } from "react";
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
+import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
+import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import { supabase } from "@/lib/supabase";
 
 export function Contact() {
   useReveal();
+  const bgImage = usePageBackgroundImage("contact");
   const { settings } = useSiteSettings();
   const { status, error, submitting, fail, succeed, onFormInput } = useFormStatus();
 
@@ -24,12 +27,13 @@ export function Contact() {
     const data = {
       name: (form.elements.namedItem("name") as HTMLInputElement).value.trim(),
       email: (form.elements.namedItem("email") as HTMLInputElement).value.trim(),
-      reason: (form.elements.namedItem("reason") as HTMLSelectElement).value,
+      reason: "General enquiry",
       message: (form.elements.namedItem("message") as HTMLTextAreaElement).value.trim(),
     };
+    const consentPrivacy = (form.elements.namedItem("consent-privacy") as HTMLInputElement).checked;
 
-    if (!data.name || !data.email || !data.message) {
-      fail("Please fill in your name, email, and a message.");
+    if (!data.name || !data.email || !data.message || !consentPrivacy) {
+      fail("Please fill in your name, email, and a message, and agree to the Privacy Policy.");
       return;
     }
 
@@ -49,7 +53,7 @@ export function Contact() {
 
   return (
     <>
-      <section className="page-hero">
+      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Contact</span></div>
@@ -89,19 +93,11 @@ export function Contact() {
                   <input id="contact-email" name="email" type="email" placeholder="you@manchester.ac.uk" autoComplete="email" required />
                 </div>
                 <div className="field">
-                  <label htmlFor="contact-reason">Reason</label>
-                  <select id="contact-reason" name="reason" defaultValue="I want to join MUTIS">
-                    <option>I want to join MUTIS</option>
-                    <option>Partnership / sponsorship enquiry</option>
-                    <option>MEIF analyst application</option>
-                    <option>Event press / media</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-                <div className="field">
                   <label htmlFor="contact-message">Message</label>
                   <textarea id="contact-message" name="message" placeholder="Tell us a bit more…" required />
                 </div>
+
+                <PrivacyConsent id="contact-consent-privacy" />
 
                 <FormFeedback
                   status={status}

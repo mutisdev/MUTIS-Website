@@ -625,6 +625,98 @@ export type Database = {
         }
         Relationships: []
       }
+      membership_signups: {
+        Row: {
+          course: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          status: string
+          year: string
+        }
+        Insert: {
+          course: string
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          status?: string
+          year: string
+        }
+        Update: {
+          course?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          status?: string
+          year?: string
+        }
+        Relationships: []
+      }
+      network_logos: {
+        Row: {
+          alumnus_id: string | null
+          company_name: string
+          created_at: string
+          display_order: number
+          id: string
+          is_published: boolean
+          logo_url: string
+          updated_at: string
+        }
+        Insert: {
+          alumnus_id?: string | null
+          company_name: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_published?: boolean
+          logo_url: string
+          updated_at?: string
+        }
+        Update: {
+          alumnus_id?: string | null
+          company_name?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_published?: boolean
+          logo_url?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_logos_alumnus_id_fkey"
+            columns: ["alumnus_id"]
+            isOneToOne: false
+            referencedRelation: "alumni"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      page_backgrounds: {
+        Row: {
+          image_url: string | null
+          page_key: string
+          updated_at: string
+        }
+        Insert: {
+          image_url?: string | null
+          page_key: string
+          updated_at?: string
+        }
+        Update: {
+          image_url?: string | null
+          page_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       past_speakers: {
         Row: {
           created_at: string
@@ -770,6 +862,7 @@ export type Database = {
         Row: {
           contact_email: string
           founding_year: number
+          freshers_fair_banner_enabled: boolean
           id: number
           instagram_url: string
           linkedin_url: string
@@ -781,6 +874,7 @@ export type Database = {
         Insert: {
           contact_email?: string
           founding_year?: number
+          freshers_fair_banner_enabled?: boolean
           id?: number
           instagram_url?: string
           linkedin_url?: string
@@ -792,6 +886,7 @@ export type Database = {
         Update: {
           contact_email?: string
           founding_year?: number
+          freshers_fair_banner_enabled?: boolean
           id?: number
           instagram_url?: string
           linkedin_url?: string
