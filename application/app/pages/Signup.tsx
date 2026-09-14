@@ -6,6 +6,15 @@ import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import { EmailField, validateEmail } from "@/app/components/EmailField";
+import {
+  ETHNICITY_GROUPS,
+  ETHNICITY_PREFER_NOT_TO_SAY,
+  ETHNICITY_OTHER_VALUES,
+  CONTEXTUAL_OFFER_OPTIONS,
+  SCHOOL_TYPE_OPTIONS,
+  FIRST_GENERATION_OPTIONS,
+  FREE_SCHOOL_MEALS_OPTIONS,
+} from "@/app/data/diversityOptions";
 import { supabase } from "@/lib/supabase";
 
 const SUCCESS_TOAST_MS = 10000;
@@ -13,6 +22,7 @@ const SUCCESS_TOAST_MS = 10000;
 export function Signup() {
   useReveal();
   const { status, error, submitting, fail, succeed, onFormInput } = useFormStatus();
+  const [ethnicity, setEthnicity] = useState("");
 
   // See AlumniRegister.tsx for why this is a floating toast rather than an
   // inline banner: the confirmation should be visible even if the visitor
@@ -81,7 +91,15 @@ export function Signup() {
 
     submitting();
 
+    // Generated client-side (rather than read back after insert) because the
+    // public "anon" role only has INSERT on membership_signups, not SELECT —
+    // deliberately, so a visitor can't read other people's signups. Setting
+    // id explicitly here just overrides the column's own gen_random_uuid()
+    // default with a value we already know, for the diversity FK below.
+    const signupId = crypto.randomUUID();
+
     const { error: insertError } = await supabase.from("membership_signups").insert({
+      id: signupId,
       full_name: fullName,
       email,
       course,
@@ -99,8 +117,31 @@ export function Signup() {
       return;
     }
 
+    // Optional EDI data — a separate, admin-only-readable table. Only
+    // inserted if the visitor actually answered at least one question;
+    // never blocks the signup itself from succeeding.
+    const ethnicityOther = (form.elements.namedItem("ethnicity-other") as HTMLInputElement | null)?.value.trim() ?? "";
+    const contextualOffer = (form.elements.namedItem("contextual-offer") as HTMLSelectElement).value;
+    const schoolType = (form.elements.namedItem("school-type") as HTMLSelectElement).value;
+    const firstGeneration = (form.elements.namedItem("first-generation") as HTMLSelectElement).value;
+    const freeSchoolMeals = (form.elements.namedItem("free-school-meals") as HTMLSelectElement).value;
+
+    if (ethnicity || contextualOffer || schoolType || firstGeneration || freeSchoolMeals) {
+      const { error: diversityError } = await supabase.from("membership_signup_diversity").insert({
+        signup_id: signupId,
+        ethnicity: ethnicity || null,
+        ethnicity_other_description: ETHNICITY_OTHER_VALUES.has(ethnicity) ? ethnicityOther || null : null,
+        contextual_offer_eligible: contextualOffer || null,
+        school_type: schoolType || null,
+        first_generation_student: firstGeneration || null,
+        free_school_meals: freeSchoolMeals || null,
+      });
+      if (diversityError) console.error("Failed to submit diversity data", diversityError);
+    }
+
     succeed();
     form.reset();
+    setEthnicity("");
   };
 
   return (
@@ -197,6 +238,86 @@ export function Signup() {
                   placeholder="07xxx xxxxxx"
                   autoComplete="tel"
                 />
+              </div>
+
+              <div className="page-eyebrow r-up" style={{ marginTop: 8 }}>
+                <span className="bar" />Optional — Diversity &amp; Widening Participation
+              </div>
+              <p className="lede r-up" style={{ fontSize: 13, marginTop: 4 }}>
+                These questions are optional and used only for internal EDI monitoring. Responses are
+                anonymised for reporting and have no effect on your membership.
+              </p>
+
+              <div className="field">
+                <label htmlFor="su-ethnicity">Ethnic background (optional)</label>
+                <select
+                  id="su-ethnicity"
+                  name="ethnicity"
+                  value={ethnicity}
+                  onChange={(e) => setEthnicity(e.target.value)}
+                >
+                  <option value="">Select…</option>
+                  {ETHNICITY_GROUPS.map((g) => (
+                    <optgroup key={g.group} label={g.group}>
+                      {g.options.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                  <option value={ETHNICITY_PREFER_NOT_TO_SAY.value}>{ETHNICITY_PREFER_NOT_TO_SAY.label}</option>
+                </select>
+              </div>
+
+              {ETHNICITY_OTHER_VALUES.has(ethnicity) && (
+                <div className="field">
+                  <label htmlFor="su-ethnicity-other">Please describe</label>
+                  <input
+                    id="su-ethnicity-other"
+                    name="ethnicity-other"
+                    type="text"
+                    placeholder="Please describe your ethnic background"
+                  />
+                </div>
+              )}
+
+              <div className="field">
+                <label htmlFor="su-contextual-offer">Eligible for a contextual offer at Manchester? (optional)</label>
+                <select id="su-contextual-offer" name="contextual-offer" defaultValue="">
+                  <option value="">Select…</option>
+                  {CONTEXTUAL_OFFER_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="su-school-type">Type of school attended (optional)</label>
+                <select id="su-school-type" name="school-type" defaultValue="">
+                  <option value="">Select…</option>
+                  {SCHOOL_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="su-first-gen">First-generation university student? (optional)</label>
+                <select id="su-first-gen" name="first-generation" defaultValue="">
+                  <option value="">Select…</option>
+                  {FIRST_GENERATION_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="su-free-school-meals">Eligible for free school meals? (optional)</label>
+                <select id="su-free-school-meals" name="free-school-meals" defaultValue="">
+                  <option value="">Select…</option>
+                  {FREE_SCHOOL_MEALS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
               </div>
 
               <PrivacyConsent id="su-consent-privacy" />

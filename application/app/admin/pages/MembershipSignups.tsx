@@ -8,8 +8,17 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { usePageCache, hasCached } from "../usePageCache";
+import {
+  ALL_ETHNICITY_OPTIONS,
+  CONTEXTUAL_OFFER_OPTIONS,
+  SCHOOL_TYPE_OPTIONS,
+  FIRST_GENERATION_OPTIONS,
+  FREE_SCHOOL_MEALS_OPTIONS,
+  diversityLabel,
+} from "@/app/data/diversityOptions";
 
 type Signup = Database["public"]["Tables"]["membership_signups"]["Row"];
+type Diversity = Database["public"]["Tables"]["membership_signup_diversity"]["Row"];
 
 const STATUS_OPTIONS = ["new", "read", "archived"];
 
@@ -20,6 +29,10 @@ function formatDateTime(iso: string) {
 export function MembershipSignups() {
   const toast = useToast();
   const [signups, setSignups] = usePageCache<Signup[]>("admin:membership-signups:rows", []);
+  const [diversityBySignupId, setDiversityBySignupId] = usePageCache<Record<string, Diversity>>(
+    "admin:membership-signups:diversity",
+    {}
+  );
   const [loading, setLoading] = useState(!hasCached("admin:membership-signups:rows"));
 
   const [search, setSearch] = usePageCache("admin:membership-signups:search", "");
@@ -30,9 +43,17 @@ export function MembershipSignups() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchAll = async () => {
-    const { data, error } = await supabase.from("membership_signups").select("*");
-    if (error) toast.error("Could not load membership signups.");
-    if (data) setSignups(data);
+    const [signupsRes, diversityRes] = await Promise.all([
+      supabase.from("membership_signups").select("*"),
+      supabase.from("membership_signup_diversity").select("*"),
+    ]);
+    if (signupsRes.error || diversityRes.error) toast.error("Could not load membership signups.");
+    if (signupsRes.data) setSignups(signupsRes.data);
+    if (diversityRes.data) {
+      const map: Record<string, Diversity> = {};
+      for (const row of diversityRes.data) map[row.signup_id] = row;
+      setDiversityBySignupId(map);
+    }
     setLoading(false);
   };
 
@@ -90,6 +111,36 @@ export function MembershipSignups() {
     { key: "course", label: "Course", render: (r) => r.course, exportValue: (r) => r.course },
     { key: "year", label: "Year", render: (r) => r.year, exportValue: (r) => r.year },
     { key: "phone", label: "Phone", render: (r) => r.phone ?? "—", exportValue: (r) => r.phone ?? "" },
+    {
+      key: "ethnicity",
+      label: "Ethnicity",
+      render: (r) => diversityLabel(diversityBySignupId[r.id]?.ethnicity, ALL_ETHNICITY_OPTIONS),
+      exportValue: (r) => diversityLabel(diversityBySignupId[r.id]?.ethnicity, ALL_ETHNICITY_OPTIONS),
+    },
+    {
+      key: "contextual_offer",
+      label: "Contextual offer",
+      render: (r) => diversityLabel(diversityBySignupId[r.id]?.contextual_offer_eligible, CONTEXTUAL_OFFER_OPTIONS),
+      exportValue: (r) => diversityLabel(diversityBySignupId[r.id]?.contextual_offer_eligible, CONTEXTUAL_OFFER_OPTIONS),
+    },
+    {
+      key: "school_type",
+      label: "School type",
+      render: (r) => diversityLabel(diversityBySignupId[r.id]?.school_type, SCHOOL_TYPE_OPTIONS),
+      exportValue: (r) => diversityLabel(diversityBySignupId[r.id]?.school_type, SCHOOL_TYPE_OPTIONS),
+    },
+    {
+      key: "first_generation",
+      label: "First-gen student",
+      render: (r) => diversityLabel(diversityBySignupId[r.id]?.first_generation_student, FIRST_GENERATION_OPTIONS),
+      exportValue: (r) => diversityLabel(diversityBySignupId[r.id]?.first_generation_student, FIRST_GENERATION_OPTIONS),
+    },
+    {
+      key: "free_school_meals",
+      label: "Free school meals",
+      render: (r) => diversityLabel(diversityBySignupId[r.id]?.free_school_meals, FREE_SCHOOL_MEALS_OPTIONS),
+      exportValue: (r) => diversityLabel(diversityBySignupId[r.id]?.free_school_meals, FREE_SCHOOL_MEALS_OPTIONS),
+    },
     {
       key: "actions",
       label: "",
@@ -150,6 +201,47 @@ export function MembershipSignups() {
             <DetailRow label="Course" value={detail.course} />
             <DetailRow label="Year of study" value={detail.year} />
             {detail.phone && <DetailRow label="Phone" value={detail.phone} />}
+
+            {diversityBySignupId[detail.id] && (
+              <>
+                <div className="mt-[4px] text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Diversity &amp; widening participation (optional)
+                </div>
+                {diversityBySignupId[detail.id].ethnicity && (
+                  <DetailRow
+                    label="Ethnic background"
+                    value={diversityLabel(diversityBySignupId[detail.id].ethnicity, ALL_ETHNICITY_OPTIONS)}
+                  />
+                )}
+                {diversityBySignupId[detail.id].ethnicity_other_description && (
+                  <DetailRow label="Ethnicity — please describe" value={diversityBySignupId[detail.id].ethnicity_other_description!} />
+                )}
+                {diversityBySignupId[detail.id].contextual_offer_eligible && (
+                  <DetailRow
+                    label="Contextual offer eligible"
+                    value={diversityLabel(diversityBySignupId[detail.id].contextual_offer_eligible, CONTEXTUAL_OFFER_OPTIONS)}
+                  />
+                )}
+                {diversityBySignupId[detail.id].school_type && (
+                  <DetailRow
+                    label="Type of school attended"
+                    value={diversityLabel(diversityBySignupId[detail.id].school_type, SCHOOL_TYPE_OPTIONS)}
+                  />
+                )}
+                {diversityBySignupId[detail.id].first_generation_student && (
+                  <DetailRow
+                    label="First-generation university student"
+                    value={diversityLabel(diversityBySignupId[detail.id].first_generation_student, FIRST_GENERATION_OPTIONS)}
+                  />
+                )}
+                {diversityBySignupId[detail.id].free_school_meals && (
+                  <DetailRow
+                    label="Free school meals eligible"
+                    value={diversityLabel(diversityBySignupId[detail.id].free_school_meals, FREE_SCHOOL_MEALS_OPTIONS)}
+                  />
+                )}
+              </>
+            )}
 
             <div className="mt-[8px] flex justify-end gap-[8px]">
               <button

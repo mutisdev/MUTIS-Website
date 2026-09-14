@@ -625,6 +625,47 @@ export type Database = {
         }
         Relationships: []
       }
+      membership_signup_diversity: {
+        Row: {
+          contextual_offer_eligible: string | null
+          created_at: string
+          ethnicity: string | null
+          ethnicity_other_description: string | null
+          first_generation_student: string | null
+          free_school_meals: string | null
+          school_type: string | null
+          signup_id: string
+        }
+        Insert: {
+          contextual_offer_eligible?: string | null
+          created_at?: string
+          ethnicity?: string | null
+          ethnicity_other_description?: string | null
+          first_generation_student?: string | null
+          free_school_meals?: string | null
+          school_type?: string | null
+          signup_id: string
+        }
+        Update: {
+          contextual_offer_eligible?: string | null
+          created_at?: string
+          ethnicity?: string | null
+          ethnicity_other_description?: string | null
+          first_generation_student?: string | null
+          free_school_meals?: string | null
+          school_type?: string | null
+          signup_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_signup_diversity_signup_id_fkey"
+            columns: ["signup_id"]
+            isOneToOne: true
+            referencedRelation: "membership_signups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       membership_signups: {
         Row: {
           course: string
