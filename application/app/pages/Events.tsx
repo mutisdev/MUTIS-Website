@@ -3,11 +3,13 @@ import { Link } from "react-router";
 import { Helmet } from "react-helmet-async";
 import DOMPurify from "dompurify";
 import { useReveal } from "@/app/hooks/useReveal";
-import { useSiteSettings } from "@/app/hooks/useSiteSettings";
+import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
 import { htmlToExcerpt } from "@/app/lib/htmlExcerpt";
 import { SITE_URL } from "@/app/hooks/usePageMeta";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
+import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { FormFeedback } from "@/app/components/FormFeedback";
+import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { Modal } from "@/app/components/Modal";
@@ -147,9 +149,10 @@ function EventSignupForm({ eventId }: { eventId: string }) {
     const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
     const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
     const notes = (form.elements.namedItem("notes") as HTMLTextAreaElement).value.trim();
+    const consentPrivacy = (form.elements.namedItem("consent-privacy") as HTMLInputElement).checked;
 
-    if (!name || !email) {
-      fail("Please fill in your name and email.");
+    if (!name || !email || !consentPrivacy) {
+      fail("Please fill in your name and email, and agree to the Privacy Policy.");
       return;
     }
 
@@ -202,6 +205,7 @@ function EventSignupForm({ eventId }: { eventId: string }) {
         <label htmlFor={`su-notes-${eventId}`}>Notes (optional)</label>
         <textarea id={`su-notes-${eventId}`} name="notes" />
       </div>
+      <PrivacyConsent id={`su-consent-privacy-${eventId}`} />
       <FormFeedback status={status} error={error} />
       <button
         className="btn btn-primary"
@@ -268,6 +272,7 @@ export function Events() {
   }, []);
 
   useReveal([FLAGSHIP.length, events.length, isLoading, loadError]);
+  const bgImage = usePageBackgroundImage("events");
 
   // Event JSON-LD, built live from the same Supabase query above — not
   // hardcoded. There's no per-event detail route (events only open in the
@@ -301,7 +306,7 @@ export function Events() {
           <script type="application/ld+json">{JSON.stringify(eventsJsonLd)}</script>
         </Helmet>
       )}
-      <section className="page-hero page-hero-events">
+      <section className="page-hero page-hero-events" style={heroBackgroundStyle(bgImage)}>
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Events</span></div>
@@ -311,6 +316,19 @@ export function Events() {
           <p className="page-sub r-up">Put yourself in the room with the people hiring.</p>
         </div>
       </section>
+
+      {settings.freshers_fair_banner_enabled && (
+        <section className="page-section" style={{ paddingTop: 32, paddingBottom: 32, background: "var(--pm-accent)" }}>
+          <div className="inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: "var(--base)" }}>
+              Come find us at the Freshers Fair — meet the committee and sign up on the day.
+            </p>
+            <Link to="/signup" className="btn btn-primary" style={{ textDecoration: "none", background: "var(--base)", color: "var(--pm-accent)" }}>
+              Sign up to MUTIS <span className="arrow" />
+            </Link>
+          </div>
+        </section>
+      )}
 
       <section className="page-section">
         <div className="inner">

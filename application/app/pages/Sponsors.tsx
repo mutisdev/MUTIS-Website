@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
+import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
+import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
@@ -147,6 +149,7 @@ export function Sponsors() {
   const pastSponsors = sponsors.filter((row) => row.tier === "past");
 
   useReveal([currentSponsors.length, pastSponsors.length, isLoading, loadError]);
+  const bgImage = usePageBackgroundImage("sponsors");
 
   const onSponsorSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -161,8 +164,9 @@ export function Sponsors() {
       email: (form.elements.namedItem("email") as HTMLInputElement).value.trim(),
       message: (form.elements.namedItem("message") as HTMLTextAreaElement).value.trim(),
     };
-    if (!data.company || !data.name || !data.email || !data.message) {
-      fail("Please fill in your company, name, email, and a message.");
+    const consentPrivacy = (form.elements.namedItem("consent-privacy") as HTMLInputElement).checked;
+    if (!data.company || !data.name || !data.email || !data.message || !consentPrivacy) {
+      fail("Please fill in your company, name, email, and a message, and agree to the Privacy Policy.");
       return;
     }
     submitting();
@@ -181,7 +185,7 @@ export function Sponsors() {
 
   return (
     <>
-      <section className="page-hero">
+      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Sponsors</span></div>
@@ -302,6 +306,8 @@ export function Sponsors() {
                   <label htmlFor="sp-message">Message</label>
                   <textarea id="sp-message" name="message" placeholder="What are you interested in?" required />
                 </div>
+
+                <PrivacyConsent id="sp-consent-privacy" />
 
                 <FormFeedback
                   status={status}

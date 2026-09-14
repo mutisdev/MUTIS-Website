@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { useToast } from "../components/Toast";
+import { PublishToggle } from "../components/StatusBadge";
 import { usePageCache, hasCached } from "../usePageCache";
 
 type SiteSettingsRow = Database["public"]["Tables"]["site_settings"]["Row"];
@@ -15,6 +16,7 @@ type FormState = {
   linkedin_url: string;
   su_signup_url: string;
   weekly_meeting_info: string;
+  freshers_fair_banner_enabled: boolean;
 };
 
 export function SiteSettings() {
@@ -48,6 +50,7 @@ export function SiteSettings() {
                 linkedin_url: data.linkedin_url,
                 su_signup_url: data.su_signup_url,
                 weekly_meeting_info: data.weekly_meeting_info,
+                freshers_fair_banner_enabled: data.freshers_fair_banner_enabled,
               }
           );
         }
@@ -73,6 +76,7 @@ export function SiteSettings() {
         linkedin_url: form.linkedin_url.trim(),
         su_signup_url: form.su_signup_url.trim(),
         weekly_meeting_info: form.weekly_meeting_info.trim(),
+        freshers_fair_banner_enabled: form.freshers_fair_banner_enabled,
       })
       .eq("id", 1)
       .select()
@@ -165,6 +169,14 @@ export function SiteSettings() {
               className="w-full rounded-[10px] border border-input bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden transition-colors focus:border-accent"
             />
           </Field>
+
+          <div className="flex items-center justify-between rounded-[12px] border border-border px-[16px] py-[14px]">
+            <span className="text-[13px] font-medium text-foreground">Show Freshers Fair banner</span>
+            <PublishToggle
+              checked={form.freshers_fair_banner_enabled}
+              onChange={(v) => setForm({ ...form, freshers_fair_banner_enabled: v })}
+            />
+          </div>
 
           <div className="mt-[8px] flex justify-end">
             <button

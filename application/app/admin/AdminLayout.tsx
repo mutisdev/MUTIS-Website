@@ -24,6 +24,9 @@ import {
   X,
   FileText,
   Plug,
+  UserPlus,
+  Building2,
+  Image,
 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 
@@ -46,6 +49,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Committee", icon: Users, path: "/admin/committee" },
       { label: "Events", icon: CalendarDays, path: "/admin/events" },
       { label: "Alumni", icon: Network, path: "/admin/alumni" },
+      { label: "Network Logos", icon: Building2, path: "/admin/network-logos" },
       { label: "Presidents", icon: Award, path: "/admin/presidents" },
       { label: "Fund Managers", icon: TrendingUp, path: "/admin/fund-managers" },
       { label: "Documents", icon: FileText, path: "/admin/documents" },
@@ -55,11 +59,15 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Recordings", icon: Video, path: "/admin/recordings" },
       { label: "Home Programs", icon: LayoutGrid, path: "/admin/home-programs" },
       { label: "Sponsorship Packages", icon: Layers, path: "/admin/sponsorship-packages" },
+      { label: "Page Backgrounds", icon: Image, path: "/admin/page-backgrounds" },
     ],
   },
   {
     label: "Submissions",
-    items: [{ label: "Submissions", icon: Inbox, path: "/admin/submissions" }],
+    items: [
+      { label: "Submissions", icon: Inbox, path: "/admin/submissions" },
+      { label: "Membership Signups", icon: UserPlus, path: "/admin/membership-signups" },
+    ],
   },
   {
     label: "Settings",

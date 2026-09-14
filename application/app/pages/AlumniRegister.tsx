@@ -5,6 +5,7 @@ import { useReveal } from "@/app/hooks/useReveal";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
+import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import { supabase } from "@/lib/supabase";
 
 const SUCCESS_TOAST_MS = 10000;
@@ -440,24 +441,7 @@ export function AlumniRegister() {
                   </div>
                   <FieldError id="al-consent-publish-error" message={fieldErrors.consentPublish} />
 
-                  <div className="field-checkbox">
-                    <input
-                      id="al-consent-gdpr"
-                      name="consent-gdpr"
-                      type="checkbox"
-                      required
-                      aria-invalid={fieldErrors.consentGdpr ? "true" : undefined}
-                      aria-describedby={fieldErrors.consentGdpr ? "al-consent-gdpr-error" : undefined}
-                    />
-                    <label htmlFor="al-consent-gdpr">
-                      I have read and agree to MUTIS's{" "}
-                      <Link to="/privacy" target="_blank" rel="noreferrer">
-                        Privacy Policy
-                      </Link>{" "}
-                      on how my data will be stored and used. *
-                    </label>
-                  </div>
-                  <FieldError id="al-consent-gdpr-error" message={fieldErrors.consentGdpr} />
+                  <PrivacyConsent id="al-consent-gdpr" name="consent-gdpr" error={fieldErrors.consentGdpr} />
 
                   <FormFeedback status={status} error={error} />
 

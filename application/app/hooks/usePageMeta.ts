@@ -67,6 +67,11 @@ export const ROUTE_META: Record<string, Meta> = {
     description:
       "Membership is open to every University of Manchester student. Sign up via the Students' Union, come to a weekly meeting, and apply to MEIF, IBC, or a sub-committee.",
   },
+  "/signup": {
+    title: "Sign Up | MUTIS Finance Society",
+    description:
+      "Become a MUTIS member: fill in your name, university email, course, and year of study to sign up.",
+  },
   "/contact": {
     title: "Contact | MUTIS Finance Society",
     description:

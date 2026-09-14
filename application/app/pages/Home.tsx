@@ -10,6 +10,8 @@ import { useTilt } from "../hooks/useTilt";
 import { useSiteSettings } from "../hooks/useSiteSettings";
 import { UpcomingEventBanner } from "../components/UpcomingEventBanner";
 import { htmlToExcerpt } from "../lib/htmlExcerpt";
+import { FreshersFairBanner } from "../components/FreshersFairBanner";
+import { usePageBackgroundImage } from "../hooks/usePageBackgrounds";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
@@ -80,11 +82,15 @@ function Hero() {
   const intro = 1;
   const fgOpacity = 1;
   const { settings } = useSiteSettings();
+  const bgImage = usePageBackgroundImage("home");
 
   return (
     <section className="pm-hero">
       {/* Background image (static, no parallax) */}
-      <div className="pm-hero-bg" style={{ transform: "scale(1.1)" }} />
+      <div
+        className="pm-hero-bg"
+        style={{ transform: "scale(1.1)", ...(bgImage ? { backgroundImage: `url(${bgImage})` } : {}) }}
+      />
       <div className="pm-hero-overlay" />
       <div className="pm-hero-grain" aria-hidden="true" />
 
@@ -556,6 +562,7 @@ export function Home() {
       {/* PLACEHOLDER: Subsidiary / org structure diagram — insert asset here */}
       <FinalCTA />
       <UpcomingEventBanner />
+      <FreshersFairBanner />
     </>
   );
 }

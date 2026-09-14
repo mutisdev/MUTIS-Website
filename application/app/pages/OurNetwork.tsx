@@ -1,54 +1,55 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
+import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
-// Company destinations — shown as logo bubbles. A bubble uses the firm's logo
-// when a published sponsor row has a matching name; otherwise a monogram.
-const DESTINATION_GROUPS = [
-  {
-    category: "Investment Banking",
-    firms: ["Goldman Sachs", "JPMorgan", "Morgan Stanley", "Houlihan Lokey", "Rothschild & Co", "UBS", "Bank of America"],
-  },
-  {
-    category: "Markets & Asset Management",
-    firms: ["BlackRock", "Barclays", "Invesco", "BNY"],
-  },
-  {
-    category: "Advisory & Consulting",
-    firms: ["Deloitte", "KPMG", "PwC"],
-  },
-];
-
 type AlumniRow = Tables<"alumni">;
+type NetworkLogoRow = Tables<"network_logos">;
 
-const normalizeFirm = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-// "Goldman Sachs" → GS, "Bank of America" → BA, "JPMorgan" → JPM, "KPMG" → KPMG.
-function firmMonogram(name: string) {
-  const words = name.split(/[^A-Za-z0-9]+/).filter((w) => /^[A-Z]/.test(w));
-  if (words.length > 1) return words.slice(0, 2).map((w) => w[0]).join("");
-  const word = words[0] ?? name;
-  if (word.length <= 4) return word;
-  const capitals = word.replace(/[^A-Z]/g, "");
-  return capitals.length >= 2 ? capitals.slice(0, 3) : word[0];
+function initialsFromName(name: string) {
+  const initials = name
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+  return initials || "CO";
 }
 
-function LogoBubble({ firm, logo }: { firm: string; logo?: string }) {
+function NetworkLogoBubble({ logo }: { logo: NetworkLogoRow }) {
   const [failed, setFailed] = useState(false);
-  const monogram = firmMonogram(firm);
   return (
-    <div className="logo-bubble">
-      <div className={"logo-bubble-circle" + (monogram.length >= 4 ? " logo-bubble-circle--long" : "")}>
-        {logo && !failed ? (
-          <img src={logo} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
-        ) : (
-          <span aria-hidden="true">{monogram}</span>
-        )}
-      </div>
-      <div className="logo-bubble-name">{firm}</div>
-    </div>
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 96,
+        height: 56,
+        padding: "8px 14px",
+        border: "1px solid var(--hair)",
+        borderRadius: 999,
+        background: "rgba(255,255,255,0.02)",
+      }}
+      title={logo.company_name}
+    >
+      {failed ? (
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          {initialsFromName(logo.company_name)}
+        </span>
+      ) : (
+        <img
+          src={logo.logo_url}
+          alt={logo.company_name}
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+        />
+      )}
+    </span>
   );
 }
 
@@ -106,6 +107,24 @@ export function OurNetwork() {
   const [members, setMembers] = useState<AlumniRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [logos, setLogos] = useState<NetworkLogoRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("network_logos")
+      .select("*")
+      .eq("is_published", true)
+      .order("display_order")
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) console.error("Failed to load network logos", error);
+        setLogos(data ?? []);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,29 +163,6 @@ export function OurNetwork() {
     };
   }, []);
 
-  // Read-only lookup of existing sponsor logos for the destination bubbles.
-  const [logosByFirm, setLogosByFirm] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    let cancelled = false;
-    supabase
-      .from("sponsors")
-      .select("name, logo_url")
-      .eq("is_published", true)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) console.error("Failed to load sponsor logos for network bubbles", error);
-        const map: Record<string, string> = {};
-        for (const row of data ?? []) {
-          if (row.logo_url) map[normalizeFirm(row.name)] = row.logo_url;
-        }
-        setLogosByFirm(map);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const [filterRole, setFilterRole]       = useState("");
   const [filterFirm, setFilterFirm]       = useState("");
   const [filterLocation, setFilterLocation] = useState("");
@@ -185,10 +181,11 @@ export function OurNetwork() {
   const hasFilters = filterRole || filterFirm || filterLocation;
 
   useReveal([members.length, isLoading, loadError]);
+  const bgImage = usePageBackgroundImage("network");
 
   return (
     <>
-      <section className="page-hero">
+      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
         <div className="page-hero-inner">
           <div>
             <div className="crumb">
@@ -212,18 +209,17 @@ export function OurNetwork() {
           <h2 className="r-up">Where our alumni go</h2>
           <p className="lede r-up">Recent graduate and internship destinations.</p>
 
-          {DESTINATION_GROUPS.map((group) => (
-            <div key={group.category} className="r-up" style={{ marginTop: 36 }}>
-              <div style={{ fontSize: 10, letterSpacing: "0.28em", textTransform: "uppercase", color: "var(--ink-soft)", marginBottom: 18 }}>
-                {group.category}
-              </div>
-              <div className="logo-bubbles">
-                {group.firms.map((firm) => (
-                  <LogoBubble key={firm} firm={firm} logo={logosByFirm[normalizeFirm(firm)]} />
-                ))}
-              </div>
+          {logos.length === 0 ? (
+            <p className="lede r-up" style={{ marginTop: 24, color: "var(--ink-soft)" }}>
+              We&apos;re building out this list — check back soon.
+            </p>
+          ) : (
+            <div className="r-up" style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 32 }}>
+              {logos.map((logo) => (
+                <NetworkLogoBubble logo={logo} key={logo.id} />
+              ))}
             </div>
-          ))}
+          )}
         </div>
       </section>
 

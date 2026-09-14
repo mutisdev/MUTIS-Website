@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
+import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { CoreValues } from "@/app/components/CoreValues";
 
@@ -8,10 +9,11 @@ export function About() {
   const yearsRunning = new Date().getFullYear() - settings.founding_year;
 
   useReveal();
+  const bgImage = usePageBackgroundImage("about");
 
   return (
     <>
-      <section className="page-hero">
+      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
         <div className="page-hero-inner">
           <div>
             <div className="crumb">
