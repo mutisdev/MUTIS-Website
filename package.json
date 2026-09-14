@@ -15,6 +15,7 @@
     "@tiptap/pm": "^3.29.2",
     "@tiptap/react": "^3.29.2",
     "@tiptap/starter-kit": "^3.29.2",
+    "@vercel/analytics": "^2.0.1",
     "dompurify": "^3.4.13",
     "lucide-react": "0.487.0",
     "mammoth": "^1.12.1",
