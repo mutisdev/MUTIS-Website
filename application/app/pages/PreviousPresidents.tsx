@@ -91,7 +91,7 @@ export function PreviousPresidents() {
             </h1>
           </div>
           <p className="page-sub r-up">
-            MUTIS has been shaped by each year&apos;s leadership. This page records the presidents who led the society through each academic year since its founding in {settings.founding_year}.
+            Every president who has led MUTIS since {settings.founding_year}.
           </p>
         </div>
       </section>

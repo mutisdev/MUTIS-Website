@@ -65,8 +65,7 @@ export function Recordings() {
             <h1 className="page-title r-up">Watch events<br /><span className="accent">on demand</span></h1>
           </div>
           <p className="page-sub r-up">
-            Missed a talk or panel? Recordings of selected MUTIS events are published here
-            for members to catch up in their own time.
+            Missed a talk or panel? Catch up here.
           </p>
         </div>
       </section>

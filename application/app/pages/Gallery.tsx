@@ -59,8 +59,7 @@ export function Gallery() {
             <h1 className="page-title r-up">Moments from<br />the <span className="accent">MUTIS year</span></h1>
           </div>
           <p className="page-sub r-up">
-            Conferences, socials, simulations, and speaker nights — a look back at the
-            people and events that make up the society.
+            Conferences, socials, simulations, and speaker nights.
           </p>
         </div>
       </section>

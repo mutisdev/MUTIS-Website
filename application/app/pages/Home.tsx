@@ -9,11 +9,12 @@ import { Link } from "react-router";
 import { useTilt } from "../hooks/useTilt";
 import { useSiteSettings } from "../hooks/useSiteSettings";
 import { UpcomingEventBanner } from "../components/UpcomingEventBanner";
+import { htmlToExcerpt } from "../lib/htmlExcerpt";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
 type SponsorRow = Tables<"sponsors">;
-type HomeProgramRow = Tables<"home_programs">;
+type EventRow = Tables<"events">;
 
 // ---- Utilities ----
 
@@ -130,7 +131,7 @@ function Hero() {
             transform: `translateY(${(1 - clamp(intro * 1.4 - 0.6)) * 14}px)`,
           }}
         >
-          We train Manchester students to compete for finance roles at the world&apos;s top banks, through real research, live capital, and direct access to industry. {settings.member_count_label} members across every faculty.
+          Real research, live capital, and direct industry access for Manchester students. {settings.member_count_label} members across every faculty.
         </p>
 
         <div
@@ -205,24 +206,41 @@ function StatsStrip() {
   );
 }
 
-// ---- What We Do ----
+// ---- Next & Upcoming Events ----
 
-function WhatWeDo() {
+const formatUpcomingDate = (isoString: string) =>
+  new Date(isoString).toLocaleString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+function UpcomingEvents() {
   const [ref, inView] = useInView<HTMLElement>({ threshold: 0.15 });
   const t = inView ? 1 : 0;
-  const [programs, setPrograms] = useState<HomeProgramRow[]>([]);
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    // Same read-time expiry rule as the Events page: visible until ends_at,
+    // or 24h after starts_at when no end time is set.
+    const now = new Date().toISOString();
+    const graceCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     supabase
-      .from("home_programs")
+      .from("events")
       .select("*")
       .eq("is_published", true)
-      .order("display_order")
+      .or(`and(ends_at.is.null,starts_at.gt.${graceCutoff}),ends_at.gt.${now}`)
+      .order("starts_at", { ascending: true })
+      .limit(4)
       .then(({ data, error }) => {
         if (cancelled) return;
-        if (error) console.error("Failed to load home programs", error);
-        setPrograms(data ?? []);
+        if (error) console.error("Failed to load upcoming events", error);
+        setEvents(data ?? []);
+        setIsLoading(false);
       });
     return () => {
       cancelled = true;
@@ -237,10 +255,10 @@ function WhatWeDo() {
             className="pm-eyebrow"
             style={{ opacity: t, transform: `translateY(${(1 - t) * 14}px)`, transition: "opacity 0.7s ease, transform 0.7s ease" }}
           >
-            What We Do
+            Next &amp; Upcoming
           </div>
           <h2 className="pm-about-heading">
-            {["Practical", "Finance", "Real Stakes"].map((line, i) => (
+            {["What's", "Coming", "Up"].map((line, i) => (
               <span className="pm-reveal-line" key={i}>
                 <span style={{
                   display: "inline-block",
@@ -257,30 +275,46 @@ function WhatWeDo() {
             className="pm-about-lede"
             style={{ opacity: t, transform: `translateY(${t ? "0px" : "20px"})`, transition: "opacity 0.9s ease 0.3s, transform 0.9s ease 0.3s" }}
           >
-            MUTIS is built around one question: what does it actually take to succeed
-            in finance? The answer is practice, access, and real responsibility. Not
-            theory alone.
+            Our next events. Sign up on the Events page.
           </p>
         </div>
 
         <div className="pm-programs">
-          {programs.map((p, i) => (
-            <div
-              className="pm-program"
-              key={p.id}
-              style={{
-                opacity: t,
-                transform: `translateY(${t ? "0px" : "24px"})`,
-                transition: `opacity 0.8s ease ${0.3 + i * 0.1}s, transform 0.8s cubic-bezier(.22,1,.36,1) ${0.3 + i * 0.1}s`,
-              }}
-            >
-              <div className="pm-program-num">{String(i + 1).padStart(2, "0")}</div>
+          {isLoading ? null : events.length === 0 ? (
+            <div className="pm-program">
+              <div className="pm-program-num">—</div>
               <div className="pm-program-body">
-                <div className="pm-program-title">{p.title}</div>
-                <div className="pm-program-desc">{p.description}</div>
+                <div className="pm-program-title">Nothing scheduled yet</div>
+                <div className="pm-program-desc">
+                  New dates are announced on the <Link to="/events" className="pm-upcoming-link">Events page</Link>.
+                </div>
               </div>
             </div>
-          ))}
+          ) : (
+            events.map((ev, i) => (
+              <Link
+                to="/events"
+                className="pm-program pm-upcoming"
+                key={ev.id}
+                style={{
+                  textDecoration: "none",
+                  opacity: t,
+                  transform: `translateY(${t ? "0px" : "24px"})`,
+                  transition: `opacity 0.8s ease ${0.3 + i * 0.1}s, transform 0.8s cubic-bezier(.22,1,.36,1) ${0.3 + i * 0.1}s`,
+                }}
+              >
+                <div className="pm-program-num">{String(i + 1).padStart(2, "0")}</div>
+                <div className="pm-program-body">
+                  <div className="pm-upcoming-date">{formatUpcomingDate(ev.starts_at)}</div>
+                  <div className="pm-program-title">{ev.title}</div>
+                  <div className="pm-program-desc">{htmlToExcerpt(ev.description, 110)}</div>
+                </div>
+              </Link>
+            ))
+          )}
+          <Link to="/events" className="pm-upcoming-all" style={{ textDecoration: "none" }}>
+            All events →
+          </Link>
         </div>
       </div>
     </section>
@@ -342,8 +376,7 @@ function EventsSection() {
             ))}
           </h2>
           <p style={{ opacity: t, transition: "opacity 0.9s ease 0.35s" }}>
-            Four events define the MUTIS year, drawing students from
-            across the UK and senior speakers from the firms our members are targeting.
+            Four events define the MUTIS year.
           </p>
         </div>
 
@@ -517,7 +550,7 @@ export function Home() {
     <>
       <Hero />
       <StatsStrip />
-      <WhatWeDo />
+      <UpcomingEvents />
       <EventsSection />
       <SponsorsStrip />
       {/* PLACEHOLDER: Subsidiary / org structure diagram — insert asset here */}

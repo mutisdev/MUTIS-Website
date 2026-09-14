@@ -83,8 +83,7 @@ export function PastSpeakers() {
             </h1>
           </div>
           <p className="page-sub r-up">
-            Senior professionals from across banking, markets, and asset management who
-            have shared their insight with MUTIS members.
+            Senior professionals from banking, markets, and asset management.
           </p>
         </div>
       </section>
@@ -100,8 +99,7 @@ export function PastSpeakers() {
             <p className="lede r-up" role="alert" style={{ color: "var(--ink-soft)" }}>{loadError}</p>
           ) : speakers.length === 0 ? (
             <p className="lede r-up">
-              We&apos;re compiling our archive of past speakers from previous events.
-              Check back soon.
+              Speaker archive coming soon.
             </p>
           ) : (
             <div className="speaker-grid r-up">

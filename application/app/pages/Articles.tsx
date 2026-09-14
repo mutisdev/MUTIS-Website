@@ -63,14 +63,14 @@ export function Articles() {
             <div className="page-eyebrow r-up"><span className="bar" />Articles</div>
             <h1 className="page-title r-up">Member<br /><span className="accent">research</span></h1>
           </div>
-          <p className="page-sub r-up">Original notes, deep-dives, and market commentary from MUTIS analysts and MEIF coverage teams.</p>
+          <p className="page-sub r-up">Notes, deep-dives, and market commentary from MUTIS analysts.</p>
         </div>
       </section>
 
       <section className="page-section">
         <div className="inner">
-          <div className="page-eyebrow r-up"><span className="bar" />Section 01  -  Latest</div>
-          <h2 className="r-up">Member research & commentary</h2>
+          <div className="page-eyebrow r-up"><span className="bar" />Latest</div>
+          <h2 className="r-up">Latest research</h2>
 
           {isLoading ? (
             <p className="lede r-up" role="status">Loading articles…</p>
@@ -78,8 +78,7 @@ export function Articles() {
             <p className="lede r-up" role="alert" style={{ color: "var(--ink-soft)" }}>{loadError}</p>
           ) : articles.length === 0 ? (
             <p className="lede r-up">
-              Our analysts and MEIF coverage teams are preparing the first published notes of the year.
-              Research will appear here soon  -  follow us on{" "}
+              First notes of the year are on the way. Follow us on{" "}
               <a href="https://instagram.com/mutisfinancesoc" target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>Instagram</a>{" "}
               or <Link to="/contact" style={{ color: "var(--accent)" }}>get in touch</Link> to be notified.
             </p>

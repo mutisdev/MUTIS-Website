@@ -56,7 +56,7 @@ export function Contact() {
             <div className="page-eyebrow r-up"><span className="bar" />Contact</div>
             <h1 className="page-title r-up">Get in<br /><span className="accent">touch</span></h1>
           </div>
-          <p className="page-sub r-up">Members, prospective members, partners, and journalists  -  use the form or email us directly.</p>
+          <p className="page-sub r-up">Members, partners, and press. Use the form or email us.</p>
         </div>
       </section>
 
@@ -64,9 +64,8 @@ export function Contact() {
         <div className="inner">
           <div className="contact-grid">
             <div>
-              <div className="page-eyebrow r-up"><span className="bar" />Section 01  -  Get in touch</div>
+              <div className="page-eyebrow r-up"><span className="bar" />Get in touch</div>
               <h2 className="r-up">Drop us a line</h2>
-              <p className="lede r-up">Members, prospective members, partners, and sponsors  -  use the form, or email us directly.</p>
 
               <form
                 className="contact-form r-up"

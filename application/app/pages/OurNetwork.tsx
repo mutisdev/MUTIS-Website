@@ -4,7 +4,8 @@ import { useReveal } from "@/app/hooks/useReveal";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
-// Company destinations — shown as logo bubbles. Replace text with <img> once logo assets are available.
+// Company destinations — shown as logo bubbles. A bubble uses the firm's logo
+// when a published sponsor row has a matching name; otherwise a monogram.
 const DESTINATION_GROUPS = [
   {
     category: "Investment Banking",
@@ -21,6 +22,35 @@ const DESTINATION_GROUPS = [
 ];
 
 type AlumniRow = Tables<"alumni">;
+
+const normalizeFirm = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+// "Goldman Sachs" → GS, "Bank of America" → BA, "JPMorgan" → JPM, "KPMG" → KPMG.
+function firmMonogram(name: string) {
+  const words = name.split(/[^A-Za-z0-9]+/).filter((w) => /^[A-Z]/.test(w));
+  if (words.length > 1) return words.slice(0, 2).map((w) => w[0]).join("");
+  const word = words[0] ?? name;
+  if (word.length <= 4) return word;
+  const capitals = word.replace(/[^A-Z]/g, "");
+  return capitals.length >= 2 ? capitals.slice(0, 3) : word[0];
+}
+
+function LogoBubble({ firm, logo }: { firm: string; logo?: string }) {
+  const [failed, setFailed] = useState(false);
+  const monogram = firmMonogram(firm);
+  return (
+    <div className="logo-bubble">
+      <div className={"logo-bubble-circle" + (monogram.length >= 4 ? " logo-bubble-circle--long" : "")}>
+        {logo && !failed ? (
+          <img src={logo} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+        ) : (
+          <span aria-hidden="true">{monogram}</span>
+        )}
+      </div>
+      <div className="logo-bubble-name">{firm}</div>
+    </div>
+  );
+}
 
 function alumniPhotoUrl(id: string) {
   return supabase.storage.from("alumni_photos").getPublicUrl(`${id}.jpeg`).data.publicUrl;
@@ -114,6 +144,29 @@ export function OurNetwork() {
     };
   }, []);
 
+  // Read-only lookup of existing sponsor logos for the destination bubbles.
+  const [logosByFirm, setLogosByFirm] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("sponsors")
+      .select("name, logo_url")
+      .eq("is_published", true)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) console.error("Failed to load sponsor logos for network bubbles", error);
+        const map: Record<string, string> = {};
+        for (const row of data ?? []) {
+          if (row.logo_url) map[normalizeFirm(row.name)] = row.logo_url;
+        }
+        setLogosByFirm(map);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [filterRole, setFilterRole]       = useState("");
   const [filterFirm, setFilterFirm]       = useState("");
   const [filterLocation, setFilterLocation] = useState("");
@@ -139,16 +192,15 @@ export function OurNetwork() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb">
-              <Link to="/">MUTIS</Link><span>/</span><span>Our Network</span>
+              <Link to="/">MUTIS</Link><span>/</span><span>Network</span>
             </div>
-            <div className="page-eyebrow r-up"><span className="bar" />Our Network</div>
+            <div className="page-eyebrow r-up"><span className="bar" />Network</div>
             <h1 className="page-title r-up">
               Members who<br />made the <span className="accent">leap</span>
             </h1>
           </div>
           <p className="page-sub r-up">
-            Past MUTIS members now working across investment banking, markets, asset
-            management, and consulting — and the placements that got them there.
+            Former members now in banking, markets, asset management, and consulting.
           </p>
         </div>
       </section>
@@ -157,38 +209,17 @@ export function OurNetwork() {
       <section className="page-section" style={{ borderBottom: "1px solid var(--hair)" }}>
         <div className="inner">
           <div className="page-eyebrow r-up"><span className="bar" />Destinations</div>
-          <h2 className="r-up">Where MUTIS members go</h2>
-          <p className="lede r-up">
-            Graduate and internship destinations for MUTIS members across recent years.
-            This list is indicative, not exhaustive.
-          </p>
+          <h2 className="r-up">Where our alumni go</h2>
+          <p className="lede r-up">Recent graduate and internship destinations.</p>
 
           {DESTINATION_GROUPS.map((group) => (
-            <div key={group.category} className="r-up" style={{ marginTop: 32 }}>
-              <div style={{ fontSize: 10, letterSpacing: "0.28em", textTransform: "uppercase", color: "var(--ink-soft)", marginBottom: 14 }}>
+            <div key={group.category} className="r-up" style={{ marginTop: 36 }}>
+              <div style={{ fontSize: 10, letterSpacing: "0.28em", textTransform: "uppercase", color: "var(--ink-soft)", marginBottom: 18 }}>
                 {group.category}
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <div className="logo-bubbles">
                 {group.firms.map((firm) => (
-                  <span
-                    key={firm}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "10px 18px",
-                      border: "1px solid var(--hair)",
-                      borderRadius: 4,
-                      fontFamily: "var(--font-display)",
-                      fontSize: 13,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                      lineHeight: 1,
-                      /* Swap for <img> once logo assets are available */
-                    }}
-                  >
-                    {firm}
-                  </span>
+                  <LogoBubble key={firm} firm={firm} logo={logosByFirm[normalizeFirm(firm)]} />
                 ))}
               </div>
             </div>
@@ -200,7 +231,7 @@ export function OurNetwork() {
       <section className="page-section">
         <div className="inner">
           <div className="page-eyebrow r-up"><span className="bar" />Placements</div>
-          <h2 className="r-up">Individual profiles</h2>
+          <h2 className="r-up">Alumni profiles</h2>
 
           {/* Filter bar */}
           <div className="r-up" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 28, marginBottom: 36 }}>
@@ -257,9 +288,8 @@ export function OurNetwork() {
             <p className="lede r-up" role="alert" style={{ color: "var(--ink-soft)" }}>{loadError}</p>
           ) : members.length === 0 ? (
             <p className="lede r-up">
-              We&apos;re building out our network directory. If you&apos;re a former member
-              who secured a placement and would like to be featured,{" "}
-              <Link to="/contact" style={{ color: "var(--accent)" }}>get in touch</Link>.
+              Directory coming soon. Former member?{" "}
+              <Link to="/alumni/register" style={{ color: "var(--accent)" }}>Get featured</Link>.
             </p>
           ) : filtered.length === 0 ? (
             <p className="lede r-up" style={{ color: "var(--ink-soft)" }}>
@@ -287,9 +317,7 @@ export function OurNetwork() {
           <div className="page-eyebrow r-up"><span className="bar" />Get featured</div>
           <h2 className="r-up">Are you a MUTIS alumnus?</h2>
           <p className="lede r-up">
-            Help us grow the network directory above. Share your details, career journey,
-            and a short piece of advice for current members — it only takes a couple of
-            minutes.
+            Tell us where MUTIS took you. It takes a couple of minutes.
           </p>
           <Link to="/alumni/register" className="btn btn-primary r-up" style={{ marginTop: 28, textDecoration: "none" }}>
             Register your details

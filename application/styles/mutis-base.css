@@ -128,6 +128,11 @@ img { display: block; max-width: 100%; }
   transition: opacity 0.22s ease, transform 0.22s ease, visibility 0s linear 0.22s;
   z-index: 95;
 }
+/* Invisible bridge over the margin-top gap so the pointer can travel from
+   the link into the dropdown without losing :hover. */
+.pm-nav-dropdown::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -14px; height: 14px;
+}
 .pm-nav-item:hover .pm-nav-dropdown,
 .pm-nav-item:focus-within .pm-nav-dropdown {
   opacity: 1; visibility: visible; transform: translateY(0);
@@ -161,6 +166,7 @@ img { display: block; max-width: 100%; }
 .pm-nav-link {
   color: rgba(240, 244, 248, 0.55);
   text-decoration: none;
+  white-space: nowrap;
   transition: color 0.2s ease;
   position: relative;
   padding-bottom: 2px;
@@ -686,9 +692,16 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
    Responsive - Navigation
    ========================================================== */
 
-@media (max-width: 1240px) {
+/* Ten top-level links: below 1366px tighten spacing and drop the header
+   social icons (still in the mobile panel and the footer) so labels like
+   "Past Speakers" never wrap. */
+@media (max-width: 1366px) {
   .pm-nav-links { gap: 16px; letter-spacing: 0.12em; }
   .pm-nav-right { gap: 12px; }
+  .pm-nav-socials { display: none; }
+}
+@media (max-width: 1180px) {
+  .pm-nav-links { gap: 13px; letter-spacing: 0.1em; }
 }
 
 @media (max-width: 1100px) {

@@ -131,7 +131,7 @@ export function Team() {
             <h1 className="page-title r-up">The people<br />behind<br /><span className="accent">MUTIS</span></h1>
           </div>
           <p className="page-sub r-up">
-            MUTIS is run entirely by students. Our committee spans investment, technology, sponsorships, operations, and Women in Finance — led by our Co-Presidents and Executive Committee.
+            Run entirely by students, led by our Co-Presidents and Executive Committee.
           </p>
         </div>
       </section>
