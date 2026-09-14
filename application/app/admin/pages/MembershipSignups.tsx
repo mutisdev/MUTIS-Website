@@ -110,7 +110,12 @@ export function MembershipSignups() {
     { key: "email", label: "Email", render: (r) => r.email, exportValue: (r) => r.email },
     { key: "course", label: "Course", render: (r) => r.course, exportValue: (r) => r.course },
     { key: "year", label: "Year", render: (r) => r.year, exportValue: (r) => r.year },
-    { key: "phone", label: "Phone", render: (r) => r.phone ?? "—", exportValue: (r) => r.phone ?? "" },
+    {
+      key: "consent_share_partners",
+      label: "Partner sharing consent",
+      render: (r) => (r.consent_share_partners ? "Yes" : "No"),
+      exportValue: (r) => (r.consent_share_partners ? "Yes" : "No"),
+    },
     {
       key: "ethnicity",
       label: "Ethnicity",
@@ -200,12 +205,12 @@ export function MembershipSignups() {
             <DetailRow label="Email" value={detail.email} />
             <DetailRow label="Course" value={detail.course} />
             <DetailRow label="Year of study" value={detail.year} />
-            {detail.phone && <DetailRow label="Phone" value={detail.phone} />}
+            <DetailRow label="Consented to share data with partner firms" value={detail.consent_share_partners ? "Yes" : "No"} />
 
             {diversityBySignupId[detail.id] && (
               <>
                 <div className="mt-[4px] text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  Diversity &amp; widening participation (optional)
+                  Diversity &amp; widening participation
                 </div>
                 {diversityBySignupId[detail.id].ethnicity && (
                   <DetailRow

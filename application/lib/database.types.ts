@@ -668,6 +668,8 @@ export type Database = {
       }
       membership_signups: {
         Row: {
+          consent_share_partners: boolean
+          consent_share_partners_at: string | null
           course: string
           created_at: string
           email: string
@@ -678,6 +680,8 @@ export type Database = {
           year: string
         }
         Insert: {
+          consent_share_partners?: boolean
+          consent_share_partners_at?: string | null
           course: string
           created_at?: string
           email: string
@@ -688,6 +692,8 @@ export type Database = {
           year: string
         }
         Update: {
+          consent_share_partners?: boolean
+          consent_share_partners_at?: string | null
           course?: string
           created_at?: string
           email?: string
