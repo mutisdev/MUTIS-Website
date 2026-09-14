@@ -38,7 +38,7 @@ export function Contact() {
       return;
     }
 
-    const emailError = validateEmail(data.email, true, false);
+    const emailError = validateEmail(data.email, true);
     if (emailError) {
       fail(emailError);
       return;

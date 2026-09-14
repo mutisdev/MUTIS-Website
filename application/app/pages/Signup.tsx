@@ -100,7 +100,7 @@ export function Signup() {
       return;
     }
 
-    const emailError = validateEmail(email, true, true);
+    const emailError = validateEmail(email, true);
     if (emailError) {
       fail(emailError);
       return;
@@ -209,9 +209,8 @@ export function Signup() {
 
               <EmailField
                 id="su-email"
-                label="University email *"
-                placeholder="you@student.manchester.ac.uk"
-                requireManchesterDomain
+                label="Email *"
+                placeholder="you@example.com"
               />
 
               <div className="field">

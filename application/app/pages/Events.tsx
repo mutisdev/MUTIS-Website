@@ -64,7 +64,7 @@ function EventSignupForm({ eventId }: { eventId: string }) {
       return;
     }
 
-    const emailError = validateEmail(email, true, false);
+    const emailError = validateEmail(email, true);
     if (emailError) {
       fail(emailError);
       return;

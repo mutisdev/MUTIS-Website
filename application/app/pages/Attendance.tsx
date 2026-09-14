@@ -69,7 +69,7 @@ export function Attendance() {
       return;
     }
 
-    const emailError = validateEmail(email, true, true);
+    const emailError = validateEmail(email, true);
     if (emailError) {
       fail(emailError);
       return;
@@ -209,9 +209,8 @@ export function Attendance() {
 
                   <EmailField
                     id="att-email"
-                    label="University email *"
-                    placeholder="you@student.manchester.ac.uk"
-                    requireManchesterDomain
+                    label="Email *"
+                    placeholder="you@example.com"
                   />
 
                   <div className="field">

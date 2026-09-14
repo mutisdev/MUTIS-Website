@@ -198,7 +198,7 @@ export function Sponsors() {
       fail("Please fill in your company, name, email, and a message, and agree to the Privacy Policy.");
       return;
     }
-    const emailError = validateEmail(data.email, true, false);
+    const emailError = validateEmail(data.email, true);
     if (emailError) {
       fail(emailError);
       return;
