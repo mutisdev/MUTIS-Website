@@ -13,6 +13,7 @@ const FALLBACK: SiteSettings = {
   linkedin_url: "https://www.linkedin.com/company/manchester-university-trading-&-investment-society/",
   su_signup_url: "https://manchesterstudentsunion.com/activities/view/mutis",
   weekly_meeting_info: "Tuesdays at Alliance MBS",
+  freshers_fair_banner_enabled: false,
   updated_at: "",
 };
 

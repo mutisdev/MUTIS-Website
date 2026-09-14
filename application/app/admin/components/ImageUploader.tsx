@@ -13,7 +13,9 @@ export type StorageBucket =
   | "president_photos"
   | "gallery_photos"
   | "speaker_photos"
-  | "fund_manager_photos";
+  | "fund_manager_photos"
+  | "network_logos"
+  | "page_background_images";
 
 type Aspect = "square" | "contain" | "banner";
 
