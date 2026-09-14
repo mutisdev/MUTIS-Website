@@ -131,6 +131,24 @@ a.tilt, button.tilt { display: inline-flex; align-items: center; }
   color: #3c4a66;
 }
 
+/* Next & Upcoming events (reuses the program row layout) */
+.pm-upcoming { color: inherit; transition: padding-left 0.3s ease; }
+.pm-upcoming:hover { padding-left: 8px; }
+.pm-upcoming .pm-program-title { transition: color 0.2s ease; }
+.pm-upcoming:hover .pm-program-title { color: #0e7fa3; }
+.pm-upcoming-date {
+  font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+  color: #76869f; margin-bottom: 8px;
+}
+.pm-upcoming-link { color: #0e7fa3; }
+.pm-upcoming-all {
+  display: block; padding-top: 24px;
+  border-top: 1px solid rgba(2, 25, 103, 0.14);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+  color: #021967; transition: color 0.2s ease;
+}
+.pm-upcoming-all:hover { color: #0e7fa3; }
+
 /* ==========================================================
    Events section
    ========================================================== */

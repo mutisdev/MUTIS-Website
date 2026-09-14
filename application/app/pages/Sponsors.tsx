@@ -21,20 +21,6 @@ const PAST_EVENT_IMAGES = Object.entries(eventImageModules)
   .slice(0, 14);
 
 type SponsorRow = Tables<"sponsors">;
-type PackageRow = Tables<"sponsorship_packages">;
-
-const TIER_ORDER = ["gold", "silver"] as const;
-
-function formatTier(tier: string) {
-  return tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : tier;
-}
-
-function groupSponsors(rows: SponsorRow[]) {
-  return TIER_ORDER.map((tier) => ({
-    tier,
-    firms: rows.filter((row) => row.tier === tier),
-  })).filter((group) => group.firms.length > 0);
-}
 
 function initialsFromName(name: string) {
   const initials = name
@@ -120,7 +106,6 @@ export function Sponsors() {
   const [sponsors, setSponsors] = useState<SponsorRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [packages, setPackages] = useState<PackageRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,26 +143,13 @@ export function Sponsors() {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    supabase
-      .from("sponsorship_packages")
-      .select("*")
-      .order("display_order")
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) console.error("Failed to load sponsorship packages", error);
-        setPackages(data ?? []);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const sponsorGroups = groupSponsors(sponsors);
+  // Tiers are still stored per sponsor (and managed in the admin panel), but
+  // the public page shows every current partner in one flat grid, in
+  // display_order, with equal visual weight. "past" stays its own section.
+  const currentSponsors = sponsors.filter((row) => row.tier !== "past");
   const pastSponsors = sponsors.filter((row) => row.tier === "past");
 
-  useReveal([sponsorGroups.length, pastSponsors.length, isLoading, loadError]);
+  useReveal([currentSponsors.length, pastSponsors.length, isLoading, loadError]);
   const bgImage = usePageBackgroundImage("sponsors");
 
   const onSponsorSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -224,44 +196,22 @@ export function Sponsors() {
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Sponsors</span></div>
             <div className="page-eyebrow r-up"><span className="bar" />Sponsors</div>
-            <h1 className="page-title r-up">Our<br />partners<br /><span className="accent">One pipeline</span></h1>
+            <h1 className="page-title r-up">Our<br /><span className="accent">partners</span></h1>
           </div>
-          <p className="page-sub r-up">Sponsor firms underwrite our flagship events, host workshops, and  -  most importantly  -  meet our members ahead of recruitment.</p>
-        </div>
-      </section>
-
-      {/* Sponsorship packages */}
-      <section className="page-section" style={{ borderBottom: "1px solid var(--hair)" }}>
-        <div className="inner">
-          <div className="page-eyebrow r-up"><span className="bar" />Packages</div>
-          <h2 className="r-up">Sponsorship tiers</h2>
-          <p className="lede r-up">Three partnership levels — each with tailored access to our {settings.member_count_label} members and flagship event programme. Contact us for full package details and pricing.</p>
-          <div className="r-up" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 0, borderTop: "1px solid var(--hair)", borderLeft: "1px solid var(--hair)", marginTop: 36 }}>
-            {packages.map((pkg) => (
-              <div key={pkg.id} style={{ borderRight: "1px solid var(--hair)", borderBottom: "1px solid var(--hair)", padding: "36px 28px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                  <span style={{ fontFamily: "var(--font-display)", fontSize: 22, textTransform: "uppercase", letterSpacing: "0.005em" }}>{pkg.tier}</span>
-                  <span className="label">{pkg.headline}</span>
-                </div>
-                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                  {pkg.deliverables.map((d) => (
-                    <li key={d} style={{ fontSize: 13, color: "var(--ink-soft)", padding: "5px 0", borderBottom: "1px solid var(--hair)", lineHeight: 1.5 }}>
-                      <span style={{ color: "var(--pm-accent)", marginRight: 8 }}>→</span>{d}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          <div className="sponsor-hero-cta r-up">
+            <a href="#enquire" className="btn btn-primary" style={{ textDecoration: "none" }}>
+              Enquire about Sponsorship
+              <span className="arrow" />
+            </a>
           </div>
         </div>
       </section>
 
-      {/* Current partners by tier */}
+      {/* Current partners — one flat grid, no tiers */}
       <section className="page-section">
         <div className="inner">
-          <div className="page-eyebrow r-up"><span className="bar" />Partners &amp; Sponsors</div>
+          <div className="page-eyebrow r-up"><span className="bar" />Partners</div>
           <h2 className="r-up">Who we work with</h2>
-          <p className="lede r-up">Partners across investment banking, markets, wealth management, and education. Each commits to recruitment access, content, or both.</p>
 
           {isLoading ? (
             <>
@@ -270,24 +220,16 @@ export function Sponsors() {
             </>
           ) : loadError ? (
             <p className="lede r-up" role="alert" style={{ color: "var(--ink-soft)" }}>{loadError}</p>
-          ) : sponsorGroups.length === 0 ? (
+          ) : currentSponsors.length === 0 ? (
             <p className="lede r-up" role="status" style={{ color: "var(--ink-soft)" }}>
               No sponsors are published yet.
             </p>
           ) : (
-            sponsorGroups.map((tier) => (
-              <div className="r-up" key={tier.tier}>
-                <div className="tier-head">
-                  <span>{formatTier(tier.tier)} Sponsors</span>
-                  <span className="label">{formatTier(tier.tier)}</span>
-                </div>
-                <div className="sponsor-grid">
-                  {tier.firms.map((firm) => (
-                    <SponsorCard key={firm.id} firm={firm} />
-                  ))}
-                </div>
-              </div>
-            ))
+            <div className="sponsor-grid r-up" style={{ marginTop: 36 }}>
+              {currentSponsors.map((firm) => (
+                <SponsorCard key={firm.id} firm={firm} />
+              ))}
+            </div>
           )}
         </div>
       </section>
@@ -299,7 +241,7 @@ export function Sponsors() {
           <h2 className="r-up">Past sponsors</h2>
           {pastSponsors.length === 0 ? (
             <p className="lede r-up" style={{ color: "var(--ink-soft)" }}>
-              We&apos;re putting together a record of the firms that have supported MUTIS in previous years. Check back soon.
+              Coming soon.
             </p>
           ) : (
             <div className="sponsor-grid r-up">
@@ -317,7 +259,7 @@ export function Sponsors() {
           <div className="inner">
             <div className="page-eyebrow r-up"><span className="bar" />In Action</div>
             <h2 className="r-up">Where sponsorship goes</h2>
-            <p className="lede r-up">Partner support powers the events, workshops, and conferences our members show up for.</p>
+            <p className="lede r-up">The events and workshops our members show up for.</p>
             <div className="image-belt r-up" aria-label="Past event photos">
               <div className="image-track">
                 {[...PAST_EVENT_IMAGES, ...PAST_EVENT_IMAGES].map((src, i) => {
@@ -334,16 +276,15 @@ export function Sponsors() {
         </section>
       )}
 
-      {/* Sponsorship enquiry form */}
-      <section className="page-section">
+      {/* Sponsorship enquiry form — target of the nav dropdown and hero CTA */}
+      <section className="page-section" id="enquire">
         <div className="inner">
           <div className="contact-grid">
             <div>
               <div className="page-eyebrow r-up"><span className="bar" />Become a Partner</div>
               <h2 className="r-up">Enquire about sponsorship</h2>
               <p className="lede r-up">
-                Interested in reaching {settings.member_count_label} Manchester finance students? Tell us a little about
-                your firm and we&apos;ll be in touch with partnership options.
+                Reach {settings.member_count_label} Manchester finance students. Tell us about your firm.
               </p>
               <form
                 className="contact-form r-up"

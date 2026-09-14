@@ -66,7 +66,7 @@ export function WIF() {
             <div className="page-eyebrow r-up"><span className="bar" />Women in Finance</div>
             <h1 className="page-title r-up">Supporting women<br />in <span className="accent">finance</span></h1>
           </div>
-          <p className="page-sub r-up">Women in Finance (WiF) is MUTIS&apos;s dedicated sub-committee supporting women and gender minorities pursuing careers in finance.</p>
+          <p className="page-sub r-up">MUTIS&apos;s sub-committee supporting women and gender minorities in finance.</p>
         </div>
       </section>
 

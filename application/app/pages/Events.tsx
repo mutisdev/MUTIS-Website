@@ -15,21 +15,114 @@ import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { Modal } from "@/app/components/Modal";
 
+// `summary` shows on the collapsed card; `full` and `details` are revealed on
+// expand. PENDING: fuller write-ups (format, past partners, how to take part)
+// from the committee — only facts already published on the site are used here.
 const FLAGSHIP = [
-  { num: "E.01", title: "Women in Finance Conference", term: "Autumn Term", desc: "A flagship day bringing senior women from across investment banking, asset management, and markets onto campus.", foot: "Manchester" },
-  { num: "E.02", title: "UK Student Finance Summit", term: "Spring Term", desc: "The largest cross-university gathering of finance students in the UK, hosted by MUTIS in partnership with leading firms.", foot: "Manchester" },
-  { num: "E.03", title: "M&A Challenge", term: "Year-round", desc: "A live deal simulation run across the year, judged by working bankers from sponsor firms.", foot: "Manchester" },
-  { num: "E.04", title: "The Shade Tree", term: "Spring Term", desc: "A 25-year, student-run investment initiative run annually with Alliance Manchester Business School, where MUTIS teams pitch real long-term investment theses for capital donated by alumni Adam and Sara Franks.", foot: "Manchester" },
+  {
+    num: "E.01",
+    title: "Women in Finance Conference",
+    term: "Autumn Term",
+    summary: "Senior women from across finance, on campus for a day.",
+    full: "A flagship day bringing senior women from across investment banking, asset management, and markets onto campus.",
+    details: [["Format", "Conference"], ["Sectors", "Investment banking · Asset management · Markets"]],
+    foot: "Manchester",
+  },
+  {
+    num: "E.02",
+    title: "UK Student Finance Summit",
+    term: "Spring Term",
+    summary: "The UK's largest cross-university finance student gathering.",
+    full: "The largest cross-university gathering of finance students in the UK, hosted by MUTIS in partnership with leading firms.",
+    details: [["Format", "Summit"], ["Open to", "Finance students from universities across the UK"]],
+    foot: "Manchester",
+  },
+  {
+    num: "E.03",
+    title: "M&A Challenge",
+    term: "Year-round",
+    summary: "A year-long live deal simulation, judged by bankers.",
+    full: "A live deal simulation run across the year, judged by working bankers from sponsor firms.",
+    details: [["Format", "Live deal simulation"], ["Judged by", "Working bankers from sponsor firms"]],
+    foot: "Manchester",
+  },
+  {
+    num: "E.04",
+    title: "The Shade Tree",
+    term: "Spring Term",
+    summary: "A 25-year student-run investment initiative with Alliance MBS.",
+    full: "A 25-year, student-run investment initiative run annually with Alliance Manchester Business School, where MUTIS teams pitch real long-term investment theses for capital donated by alumni Adam and Sara Franks.",
+    details: [["Format", "Investment pitch"], ["Partner", "Alliance Manchester Business School"]],
+    foot: "Manchester",
+  },
 ];
+
+function FlagshipCard({ event }: { event: (typeof FLAGSHIP)[number] }) {
+  const [open, setOpen] = useState(false);
+  const panelId = `flagship-${event.num}`;
+  const toggle = () => setOpen((v) => !v);
+
+  // The whole card toggles on click for convenience; the button in the
+  // footer is the accessible control (keyboard + screen readers).
+  // Open state lives in data-open, not className: useReveal adds the "in"
+  // class to .r-up elements directly, and a React className change would
+  // wipe it and hide the card again.
+  return (
+    <div className="dark-card flagship-card r-up" data-open={open} onClick={toggle}>
+      <div className="num">{event.num}</div>
+      <h3>{event.title}</h3>
+      <div className="meta">{event.term}</div>
+      <p>{event.summary}</p>
+      <div className="flagship-more" id={panelId} aria-hidden={!open}>
+        <div>
+          <p>{event.full}</p>
+          <dl className="flagship-details">
+            {event.details.map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+      <div className="foot">
+        <span>{event.foot}</span>
+        <button
+          type="button"
+          className="more"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggle();
+          }}
+        >
+          {open ? "Show less ↑" : "Read more ↓"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const eventImageModules = import.meta.glob(
   "../../assets/events/*.{jpg,jpeg,png,webp,avif,JPG,JPEG,PNG,WEBP,AVIF}",
   { eager: true, import: "default" },
 ) as Record<string, string>;
 
-const PAST_EVENT_IMAGES = Object.entries(eventImageModules)
+// Curated "past examples" — drop images from Instagram (@mutisfinancesoc) and
+// other channels into application/assets/events/, then caption them here by
+// filename. Uncaptioned images still show, just without a caption.
+const PAST_EVENT_CAPTIONS: Record<string, string> = {};
+const PAST_EVENT_EXAMPLE_COUNT = 8;
+
+const PAST_EVENT_EXAMPLES = Object.entries(eventImageModules)
   .sort(([a], [b]) => a.localeCompare(b))
-  .map(([, src]) => src);
+  .map(([path, src]) => {
+    const file = path.split("/").pop() ?? path;
+    return { file, src, caption: PAST_EVENT_CAPTIONS[file] };
+  })
+  .slice(0, PAST_EVENT_EXAMPLE_COUNT);
 
 type EventRow = Tables<"events">;
 
@@ -224,7 +317,7 @@ export function Events() {
             <div className="page-eyebrow r-up"><span className="bar" />Events</div>
             <h1 className="page-title r-up">Where members<br />meet <span className="accent">markets</span></h1>
           </div>
-          <p className="page-sub r-up">From flagship conferences to weekly partner sessions  -  MUTIS events put members in the same room as the people hiring them.</p>
+          <p className="page-sub r-up">Put yourself in the room with the people hiring.</p>
         </div>
       </section>
 
@@ -243,17 +336,11 @@ export function Events() {
 
       <section className="page-section">
         <div className="inner">
-          <div className="page-eyebrow r-up"><span className="bar" />Section 01  -  Flagship</div>
+          <div className="page-eyebrow r-up"><span className="bar" />Flagship</div>
           <h2 className="r-up">Four events define the year</h2>
-          <div className="card-grid">
+          <div className="card-grid flagship-grid">
             {FLAGSHIP.map((e) => (
-              <div className="dark-card r-up" key={e.num}>
-                <div className="num">{e.num}</div>
-                <h3>{e.title}</h3>
-                <div className="meta">{e.term}</div>
-                <p className="excerpt">{e.desc}</p>
-                <div className="foot"><span>{e.foot}</span></div>
-              </div>
+              <FlagshipCard key={e.num} event={e} />
             ))}
           </div>
         </div>
@@ -261,14 +348,14 @@ export function Events() {
 
       <section className="page-section" style={{ background: "var(--base)", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div className="inner">
-          <div className="page-eyebrow r-up"><span className="bar" />Section 02  -  Upcoming Term</div>
+          <div className="page-eyebrow r-up"><span className="bar" />Upcoming</div>
           <h2 className="r-up">Upcoming events</h2>
           {isLoading ? (
             <p className="lede r-up" role="status">Loading upcoming events…</p>
           ) : loadError ? (
             <p className="lede r-up" role="alert" style={{ color: "var(--ink-soft)" }}>{loadError}</p>
           ) : events.length === 0 ? (
-            <p className="lede r-up">No upcoming events are currently scheduled  -  check back soon, or follow us on Instagram for the latest.</p>
+            <p className="lede r-up">Nothing scheduled yet. Check back soon.</p>
           ) : (
             <div className="card-grid">
               {events.map((ev) => (
@@ -307,32 +394,33 @@ export function Events() {
 
       <section className="page-section">
         <div className="inner">
-          <div className="page-eyebrow r-up"><span className="bar" />Section 03  -  Past Events</div>
-          <h2 className="r-up">Past events</h2>
-          <p className="lede r-up">
-            Want to see who&apos;s spoken at MUTIS?{" "}
-            <Link to="/past-speakers" style={{ color: "var(--pm-accent)", textDecoration: "underline" }}>
-              Browse our past speakers →
+          <div className="page-eyebrow r-up"><span className="bar" />Past Events</div>
+          <h2 className="r-up">Past examples of events</h2>
+          <div className="event-examples r-up">
+            {PAST_EVENT_EXAMPLES.map((img) => (
+              <figure className="event-example" key={img.file}>
+                <div className="gallery-item">
+                  <img
+                    src={img.src}
+                    alt={img.caption ?? "MUTIS event photo"}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+                {img.caption && <figcaption>{img.caption}</figcaption>}
+              </figure>
+            ))}
+          </div>
+          <div className="r-up" style={{ marginTop: 32, display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <Link to="/gallery" className="btn btn-ghost" style={{ textDecoration: "none" }}>
+              Full gallery <span className="arrow" />
             </Link>
-          </p>
-          <div className="image-belt r-up" aria-label="Past event photos">
-            <div className="image-track">
-              {[...PAST_EVENT_IMAGES, ...PAST_EVENT_IMAGES].map((src, i) => {
-                const isDuplicate = i >= PAST_EVENT_IMAGES.length;
-                return (
-                  <div className="image-cell" key={src + i} aria-hidden={isDuplicate || undefined}>
-                    <img
-                      src={src}
-                      alt={isDuplicate ? "" : "MUTIS event photo"}
-                      width={220}
-                      height={130}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </div>
-                );
-              })}
-            </div>
+            <a href={settings.instagram_url} target="_blank" rel="noreferrer" className="btn btn-ghost" style={{ textDecoration: "none" }}>
+              More on Instagram <span className="arrow" />
+            </a>
+            <Link to="/past-speakers" className="btn btn-ghost" style={{ textDecoration: "none" }}>
+              Past speakers <span className="arrow" />
+            </Link>
           </div>
         </div>
       </section>

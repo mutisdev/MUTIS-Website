@@ -27,7 +27,7 @@ export function Media() {
             <h1 className="page-title r-up">See, hear, and<br /><span className="accent">relive it</span></h1>
           </div>
           <p className="page-sub r-up">
-            Photos, recordings, and our podcast — everything from the MUTIS year in one place.
+            Photos, recordings, and our podcast.
           </p>
         </div>
       </section>

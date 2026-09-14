@@ -83,9 +83,9 @@ export const ROUTE_META: Record<string, Meta> = {
       "The presidents who have led MUTIS through each academic year since its founding, and the leadership that has shaped the society.",
   },
   "/network": {
-    title: "Our Network | MUTIS Finance Society",
+    title: "Network | MUTIS Finance Society",
     description:
-      "Past MUTIS members now working across investment banking, markets, asset management, and consulting — and the placements that got them there.",
+      "Where MUTIS alumni go: former members now working across investment banking, markets, asset management, and consulting.",
   },
   "/past-speakers": {
     title: "Past Speakers | MUTIS Finance Society",
@@ -110,9 +110,9 @@ export const ROUTE_META: Record<string, Meta> = {
   // Client-side redirect stub (see SEO-AUDIT.md 2.5) — points crawlers at the
   // real destination instead of letting them index an empty transitional page.
   "/alumni": {
-    title: "Our Network | MUTIS Finance Society",
+    title: "Network | MUTIS Finance Society",
     description:
-      "Past MUTIS members now working across investment banking, markets, asset management, and consulting — and the placements that got them there.",
+      "Where MUTIS alumni go: former members now working across investment banking, markets, asset management, and consulting.",
     noindex: true,
     canonicalPath: "/network",
   },

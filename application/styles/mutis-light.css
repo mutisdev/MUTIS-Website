@@ -437,3 +437,75 @@
   .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .network-grid, .speaker-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- Events: expandable flagship cards ---------- */
+/* Cards size to their own content so expanding one doesn't stretch its row. */
+.flagship-grid { align-items: start; }
+.flagship-card { cursor: pointer; }
+.flagship-more {
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(.22,1,.36,1);
+}
+.flagship-card[data-open="true"] .flagship-more { grid-template-rows: 1fr; }
+.flagship-more > div { overflow: hidden; min-height: 0; }
+.flagship-more p { margin-top: 16px; }
+.flagship-details { margin: 18px 0 0; display: grid; gap: 10px; }
+.flagship-details div { display: grid; grid-template-columns: 88px 1fr; gap: 12px; }
+.flagship-details dt {
+  font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--ink-faint); padding-top: 3px;
+}
+.flagship-details dd { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink-soft); }
+.flagship-card .foot .more {
+  background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
+  letter-spacing: inherit; text-transform: inherit;
+}
+
+/* ---------- Events: past examples gallery ---------- */
+.event-examples {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 12px; margin-top: 32px;
+}
+.event-example { margin: 0; }
+.event-example figcaption {
+  margin-top: 8px; font-size: 12px; line-height: 1.5; color: var(--ink-soft);
+}
+
+/* ---------- Network: company logo bubbles ---------- */
+.logo-bubbles { display: flex; flex-wrap: wrap; gap: 22px 14px; }
+.logo-bubble {
+  width: 104px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-align: center;
+}
+.logo-bubble-circle {
+  width: 84px; height: 84px; border-radius: 50%; overflow: hidden; padding: 16px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid var(--hair);
+  box-shadow: 0 1px 2px rgba(10, 31, 68, 0.04);
+  font-family: var(--font-display); font-size: 22px; color: var(--ink-text);
+  white-space: nowrap;
+  transition: transform 0.3s cubic-bezier(.22,1,.36,1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.logo-bubble-circle--long { font-size: 17px; }
+.logo-bubble:hover .logo-bubble-circle {
+  transform: translateY(-4px);
+  border-color: rgba(15, 122, 168, 0.45);
+  box-shadow: 0 18px 50px -22px rgba(15, 122, 168, 0.3);
+}
+.logo-bubble-circle img { width: 100%; height: 100%; object-fit: contain; }
+.logo-bubble-name {
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  line-height: 1.4; color: var(--ink-soft);
+}
+
+/* ---------- Sponsors: hero CTA + enquiry anchor ---------- */
+.sponsor-hero-cta { padding-bottom: 14px; }
+#enquire { scroll-margin-top: 90px; }
+
+@media (max-width: 640px) {
+  .logo-bubble { width: 86px; }
+  .logo-bubble-circle { width: 68px; height: 68px; padding: 12px; font-size: 18px; }
+  .event-examples { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+}

@@ -9,12 +9,14 @@ import { Link } from "react-router";
 import { useTilt } from "../hooks/useTilt";
 import { useSiteSettings } from "../hooks/useSiteSettings";
 import { UpcomingEventBanner } from "../components/UpcomingEventBanner";
+import { htmlToExcerpt } from "../lib/htmlExcerpt";
 import { FreshersFairBanner } from "../components/FreshersFairBanner";
 import { usePageBackgroundImage } from "../hooks/usePageBackgrounds";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
 type SponsorRow = Tables<"sponsors">;
+type EventRow = Tables<"events">;
 
 // ---- Utilities ----
 
@@ -135,7 +137,7 @@ function Hero() {
             transform: `translateY(${(1 - clamp(intro * 1.4 - 0.6)) * 14}px)`,
           }}
         >
-          We train Manchester students to compete for finance roles at the world&apos;s top banks, through real research, live capital, and direct access to industry. {settings.member_count_label} members across every faculty.
+          Real research, live capital, and direct industry access for Manchester students. {settings.member_count_label} members across every faculty.
         </p>
 
         <div
@@ -210,6 +212,121 @@ function StatsStrip() {
   );
 }
 
+// ---- Next & Upcoming Events ----
+
+const formatUpcomingDate = (isoString: string) =>
+  new Date(isoString).toLocaleString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+function UpcomingEvents() {
+  const [ref, inView] = useInView<HTMLElement>({ threshold: 0.15 });
+  const t = inView ? 1 : 0;
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Same read-time expiry rule as the Events page: visible until ends_at,
+    // or 24h after starts_at when no end time is set.
+    const now = new Date().toISOString();
+    const graceCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    supabase
+      .from("events")
+      .select("*")
+      .eq("is_published", true)
+      .or(`and(ends_at.is.null,starts_at.gt.${graceCutoff}),ends_at.gt.${now}`)
+      .order("starts_at", { ascending: true })
+      .limit(4)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) console.error("Failed to load upcoming events", error);
+        setEvents(data ?? []);
+        setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <section className="pm-about" ref={ref}>
+      <div className="pm-about-inner">
+        <div className="pm-about-left">
+          <div
+            className="pm-eyebrow"
+            style={{ opacity: t, transform: `translateY(${(1 - t) * 14}px)`, transition: "opacity 0.7s ease, transform 0.7s ease" }}
+          >
+            Next &amp; Upcoming
+          </div>
+          <h2 className="pm-about-heading">
+            {["What's", "Coming", "Up"].map((line, i) => (
+              <span className="pm-reveal-line" key={i}>
+                <span style={{
+                  display: "inline-block",
+                  color: i === 2 ? "var(--pm-accent)" : "#021967",
+                  transform: `translateY(${t ? "0%" : "108%"})`,
+                  transition: `transform 1s cubic-bezier(.22,1,.36,1) ${i * 0.12}s`,
+                }}>
+                  {line}
+                </span>
+              </span>
+            ))}
+          </h2>
+          <p
+            className="pm-about-lede"
+            style={{ opacity: t, transform: `translateY(${t ? "0px" : "20px"})`, transition: "opacity 0.9s ease 0.3s, transform 0.9s ease 0.3s" }}
+          >
+            Our next events. Sign up on the Events page.
+          </p>
+        </div>
+
+        <div className="pm-programs">
+          {isLoading ? null : events.length === 0 ? (
+            <div className="pm-program">
+              <div className="pm-program-num">—</div>
+              <div className="pm-program-body">
+                <div className="pm-program-title">Nothing scheduled yet</div>
+                <div className="pm-program-desc">
+                  New dates are announced on the <Link to="/events" className="pm-upcoming-link">Events page</Link>.
+                </div>
+              </div>
+            </div>
+          ) : (
+            events.map((ev, i) => (
+              <Link
+                to="/events"
+                className="pm-program pm-upcoming"
+                key={ev.id}
+                style={{
+                  textDecoration: "none",
+                  opacity: t,
+                  transform: `translateY(${t ? "0px" : "24px"})`,
+                  transition: `opacity 0.8s ease ${0.3 + i * 0.1}s, transform 0.8s cubic-bezier(.22,1,.36,1) ${0.3 + i * 0.1}s`,
+                }}
+              >
+                <div className="pm-program-num">{String(i + 1).padStart(2, "0")}</div>
+                <div className="pm-program-body">
+                  <div className="pm-upcoming-date">{formatUpcomingDate(ev.starts_at)}</div>
+                  <div className="pm-program-title">{ev.title}</div>
+                  <div className="pm-program-desc">{htmlToExcerpt(ev.description, 110)}</div>
+                </div>
+              </Link>
+            ))
+          )}
+          <Link to="/events" className="pm-upcoming-all" style={{ textDecoration: "none" }}>
+            All events →
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ---- Events ----
 
 const EVENTS = [
@@ -265,8 +382,7 @@ function EventsSection() {
             ))}
           </h2>
           <p style={{ opacity: t, transition: "opacity 0.9s ease 0.35s" }}>
-            Four events define the MUTIS year, drawing students from
-            across the UK and senior speakers from the firms our members are targeting.
+            Four events define the MUTIS year.
           </p>
         </div>
 
@@ -440,6 +556,7 @@ export function Home() {
     <>
       <Hero />
       <StatsStrip />
+      <UpcomingEvents />
       <EventsSection />
       <SponsorsStrip />
       {/* PLACEHOLDER: Subsidiary / org structure diagram — insert asset here */}

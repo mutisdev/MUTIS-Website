@@ -10,19 +10,21 @@ const navLinks: NavItem[] = [
     to: "/about",
     label: "About",
     children: [
+      { to: "/team", label: "Team" },
       { to: "/previous-presidents", label: "Previous Presidents" },
-      { to: "/network", label: "Our Network" },
     ],
   },
-  {
-    to: "/events",
-    label: "Events",
-    children: [{ to: "/past-speakers", label: "Past Speakers" }],
-  },
+  { to: "/network", label: "Network" },
+  { to: "/events", label: "Events" },
+  { to: "/past-speakers", label: "Past Speakers" },
   { to: "/meif", label: "MEIF" },
   { to: "/wif", label: "WIF" },
+  {
+    to: "/sponsors",
+    label: "Sponsors",
+    children: [{ to: "/sponsors#enquire", label: "Enquire about Sponsorship" }],
+  },
   { to: "/articles", label: "Articles" },
-  { to: "/sponsors", label: "Sponsors" },
   {
     to: "/media",
     label: "Media",
@@ -32,7 +34,6 @@ const navLinks: NavItem[] = [
     ],
   },
   { to: "/contact", label: "Contact" },
-  { to: "/team", label: "Team" },
 ];
 
 export function Header() {
@@ -42,6 +43,7 @@ export function Header() {
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const { settings } = useSiteSettings();
+  const closeMenu = () => setMenuOpen(false);
 
   const SOCIALS = [
     { label: "MUTIS on Instagram", href: settings.instagram_url, Icon: Instagram },
@@ -96,16 +98,27 @@ export function Header() {
           <img src="/mutislogo.jpg" alt="MUTIS home" className="pm-nav-logo-img" />
         </Link>
 
-        {/* Desktop nav: flat top-level links only — no hover dropdowns. */}
+        {/* Desktop nav: top-level links, with a hover/focus dropdown where an
+            item has children. Every child is also listed in the mobile panel. */}
         <div className="pm-nav-links">
           {navLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) => "pm-nav-link" + (isActive ? " pm-nav-link--active" : "")}
-            >
-              {link.label}
-            </NavLink>
+            <div key={link.to} className="pm-nav-item">
+              <NavLink
+                to={link.to}
+                className={({ isActive }) => "pm-nav-link" + (isActive ? " pm-nav-link--active" : "")}
+              >
+                {link.label}
+              </NavLink>
+              {link.children && (
+                <div className="pm-nav-dropdown">
+                  {link.children.map((c) => (
+                    <Link key={c.to} to={c.to} className="pm-nav-dropdown-link">
+                      {c.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
@@ -166,11 +179,14 @@ export function Header() {
           </button>
         </div>
 
+        {/* Every link closes the panel on tap. The pathname effect above can't
+            cover same-page links like /sponsors#enquire while on /sponsors. */}
         <div className="pm-mobile-nav-links">
           {navLinks.map((link) => (
             <div key={link.to}>
               <NavLink
                 to={link.to}
+                onClick={closeMenu}
                 className={({ isActive }) =>
                   "pm-mobile-link" + (isActive ? " pm-mobile-link--active" : "")
                 }
@@ -178,20 +194,22 @@ export function Header() {
                 {link.label}
               </NavLink>
               {link.children?.map((c) => (
-                <NavLink
+                <Link
                   key={c.to}
                   to={c.to}
-                  className={({ isActive }) =>
-                    "pm-mobile-link pm-mobile-link--sub" + (isActive ? " pm-mobile-link--active" : "")
+                  onClick={closeMenu}
+                  className={
+                    "pm-mobile-link pm-mobile-link--sub" + (pathname === c.to ? " pm-mobile-link--active" : "")
                   }
                 >
                   {c.label}
-                </NavLink>
+                </Link>
               ))}
             </div>
           ))}
           <NavLink
             to="/join"
+            onClick={closeMenu}
             className={({ isActive }) =>
               "pm-mobile-link pm-mobile-link--join" + (isActive ? " pm-mobile-link--active" : "")
             }
