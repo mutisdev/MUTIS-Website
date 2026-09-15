@@ -191,10 +191,7 @@ export function OurNetwork() {
             <div className="crumb">
               <Link to="/">MUTIS</Link><span>/</span><span>Network</span>
             </div>
-            <div className="page-eyebrow r-up"><span className="bar" />Network</div>
-            <h1 className="page-title r-up">
-              Members who<br />made the <span className="accent">leap</span>
-            </h1>
+            <h1 className="page-title r-up">Our<br /><span className="accent">Network</span></h1>
           </div>
           <p className="page-sub r-up">
             Former members now in banking, markets, asset management, and consulting.

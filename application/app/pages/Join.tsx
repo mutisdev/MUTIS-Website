@@ -13,8 +13,7 @@ export function Join() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Join</span></div>
-            <div className="page-eyebrow r-up"><span className="bar" />Join MUTIS</div>
-            <h1 className="page-title r-up">Become a<br /><span className="accent">member</span></h1>
+            <h1 className="page-title r-up">Join<br /><span className="accent">MUTIS</span></h1>
           </div>
           <p className="page-sub r-up">Open to every University of Manchester student. Sign up via the Students' Union, then come to a weekly meeting.</p>
         </div>

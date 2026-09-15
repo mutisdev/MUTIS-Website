@@ -130,7 +130,7 @@ export function Team() {
               <Link to="/">MUTIS</Link><span>/</span><span>Team</span>
             </div>
             <div className="page-eyebrow r-up"><span className="bar" />The Committee</div>
-            <h1 className="page-title r-up">The people<br />behind<br /><span className="accent">MUTIS</span></h1>
+            <h1 className="page-title r-up"><span className="accent">Team</span></h1>
           </div>
           <p className="page-sub r-up">
             Run entirely by students, led by our Co-Presidents and Executive Committee.

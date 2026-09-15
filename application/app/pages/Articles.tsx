@@ -62,8 +62,7 @@ export function Articles() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Articles</span></div>
-            <div className="page-eyebrow r-up"><span className="bar" />Articles</div>
-            <h1 className="page-title r-up">Member<br /><span className="accent">research</span></h1>
+            <h1 className="page-title r-up"><span className="accent">Articles</span></h1>
           </div>
           <p className="page-sub r-up">Notes, deep-dives, and market commentary from MUTIS analysts.</p>
         </div>

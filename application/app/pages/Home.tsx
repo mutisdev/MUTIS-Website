@@ -561,8 +561,10 @@ export function Home() {
       <SponsorsStrip />
       {/* PLACEHOLDER: Subsidiary / org structure diagram — insert asset here */}
       <FinalCTA />
-      <UpcomingEventBanner />
-      <FreshersFairBanner />
+      <div className="pm-event-banner-stack">
+        <UpcomingEventBanner />
+        <FreshersFairBanner />
+      </div>
     </>
   );
 }

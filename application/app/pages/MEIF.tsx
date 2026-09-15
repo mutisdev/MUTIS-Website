@@ -132,8 +132,7 @@ export function MEIF() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>MEIF</span></div>
-            <div className="page-eyebrow r-up"><span className="bar" />Ethical Investment Fund</div>
-            <h1 className="page-title r-up">A real fund<br />Student <span className="accent">run</span></h1>
+            <h1 className="page-title r-up">Ethical Investment<br /><span className="accent">Fund</span></h1>
           </div>
           <p className="page-sub r-up">A student-managed global equity fund: five equity teams and one macro team.</p>
         </div>

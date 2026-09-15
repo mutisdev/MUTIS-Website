@@ -30,10 +30,7 @@ export function Resources() {
             <div className="crumb">
               <Link to="/">MUTIS</Link><span>/</span><span>Resources</span>
             </div>
-            <div className="page-eyebrow r-up"><span className="bar" />Resources</div>
-            <h1 className="page-title r-up">
-              Tools to get<br /><span className="accent">recruitment-ready</span>
-            </h1>
+            <h1 className="page-title r-up"><span className="accent">Resources</span></h1>
           </div>
           <p className="page-sub r-up">
             Guides, templates, and reading curated by the committee to help members

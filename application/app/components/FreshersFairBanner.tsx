@@ -18,25 +18,18 @@ export function FreshersFairBanner() {
 
   return (
     <div className="pm-event-banner" role="complementary" aria-label="Freshers Fair">
-      <div className="pm-event-banner-inner">
+      <div className="pm-event-banner-body">
         <p className="pm-event-banner-text">
           <span className="pm-event-banner-eyebrow">Freshers Fair</span>
           Come find us at the Freshers Fair — meet the committee and sign up on the day.
         </p>
-        <div className="pm-event-banner-actions">
-          <Link to="/signup" className="pm-event-banner-cta" style={{ textDecoration: "none" }}>
-            Sign up to MUTIS
-          </Link>
-          <button
-            type="button"
-            className="pm-event-banner-close"
-            aria-label="Dismiss"
-            onClick={dismiss}
-          >
-            <X size={16} strokeWidth={1.8} aria-hidden="true" />
-          </button>
-        </div>
+        <Link to="/signup" className="pm-event-banner-cta" style={{ textDecoration: "none" }}>
+          Sign up to MUTIS →
+        </Link>
       </div>
+      <button type="button" className="pm-event-banner-close" onClick={dismiss} aria-label="Dismiss">
+        <X style={{ width: 14, height: 14 }} aria-hidden="true" />
+      </button>
     </div>
   );
 }

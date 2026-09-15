@@ -113,7 +113,7 @@ export function Attendance() {
               <Link to="/">MUTIS</Link><span>/</span><Link to="/events">Events</Link><span>/</span><span>Attendance</span>
             </div>
             <div className="page-eyebrow r-up"><span className="bar" />Events</div>
-            <h1 className="page-title r-up">Log your<br /><span className="accent">attendance</span></h1>
+            <h1 className="page-title r-up"><span className="accent">Attendance</span></h1>
           </div>
           <p className="page-sub r-up">
             Attended a MUTIS event? Register your attendance below and share your feedback.

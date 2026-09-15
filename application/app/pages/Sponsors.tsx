@@ -195,8 +195,7 @@ export function Sponsors() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Sponsors</span></div>
-            <div className="page-eyebrow r-up"><span className="bar" />Sponsors</div>
-            <h1 className="page-title r-up">Our<br /><span className="accent">partners</span></h1>
+            <h1 className="page-title r-up"><span className="accent">Sponsors</span></h1>
           </div>
           <div className="sponsor-hero-cta r-up">
             <a href="#enquire" className="btn btn-primary" style={{ textDecoration: "none" }}>

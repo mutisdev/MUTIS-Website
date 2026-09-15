@@ -162,8 +162,7 @@ export function Signup() {
             <div className="crumb">
               <Link to="/">MUTIS</Link><span>/</span><Link to="/join">Join</Link><span>/</span><span>Sign Up</span>
             </div>
-            <div className="page-eyebrow r-up"><span className="bar" />Join MUTIS</div>
-            <h1 className="page-title r-up">Become a<br /><span className="accent">member</span></h1>
+            <h1 className="page-title r-up">Join<br /><span className="accent">MUTIS</span></h1>
           </div>
           <p className="page-sub r-up">
             Membership is open to every University of Manchester student. Fill in your details below to sign up.

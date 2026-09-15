@@ -19,8 +19,7 @@ export function About() {
             <div className="crumb">
               <Link to="/">MUTIS</Link><span>/</span><span>About</span>
             </div>
-            <div className="page-eyebrow r-up"><span className="bar" />About</div>
-            <h1 className="page-title r-up">Built for<br />the next<br /><span className="accent">generation</span></h1>
+            <h1 className="page-title r-up"><span className="accent">About</span></h1>
           </div>
           <p className="page-sub r-up">
             Run by students, funded by partners, accountable to members.

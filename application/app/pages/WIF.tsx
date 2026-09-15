@@ -63,8 +63,7 @@ export function WIF() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>WIF</span></div>
-            <div className="page-eyebrow r-up"><span className="bar" />Women in Finance</div>
-            <h1 className="page-title r-up">Supporting women<br />in <span className="accent">finance</span></h1>
+            <h1 className="page-title r-up">Women in<br /><span className="accent">Finance</span></h1>
           </div>
           <p className="page-sub r-up">MUTIS&apos;s sub-committee supporting women and gender minorities in finance.</p>
         </div>

@@ -239,7 +239,7 @@ export function AlumniRegister() {
               <Link to="/">MUTIS</Link><span>/</span><Link to="/network">Our Network</Link><span>/</span><span>Register</span>
             </div>
             <div className="page-eyebrow r-up"><span className="bar" />Our Network</div>
-            <h1 className="page-title r-up">Join the<br /><span className="accent">alumni directory</span></h1>
+            <h1 className="page-title r-up">Alumni<br /><span className="accent">Directory</span></h1>
           </div>
           <p className="page-sub r-up">
             Tell us where MUTIS took you. It takes a couple of minutes, and helps current

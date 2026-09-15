@@ -33,10 +33,7 @@ export function PastSponsors() {
             <div className="crumb">
               <Link to="/">MUTIS</Link><span>/</span><Link to="/sponsors">Sponsors</Link><span>/</span><span>Past Sponsors</span>
             </div>
-            <div className="page-eyebrow r-up"><span className="bar" />Past Sponsors</div>
-            <h1 className="page-title r-up">
-              Firms that<br />backed us <span className="accent">before</span>
-            </h1>
+            <h1 className="page-title r-up">Past<br /><span className="accent">Sponsors</span></h1>
           </div>
           <p className="page-sub r-up">
             We&apos;re grateful to every firm that has supported MUTIS over the years.

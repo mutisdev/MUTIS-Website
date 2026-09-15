@@ -79,10 +79,7 @@ export function PastSpeakers() {
             <div className="crumb">
               <Link to="/">MUTIS</Link><span>/</span><span>Past Speakers</span>
             </div>
-            <div className="page-eyebrow r-up"><span className="bar" />Past Speakers</div>
-            <h1 className="page-title r-up">
-              The people who<br />came to <span className="accent">speak</span>
-            </h1>
+            <h1 className="page-title r-up">Past<br /><span className="accent">Speakers</span></h1>
           </div>
           <p className="page-sub r-up">
             Senior professionals from banking, markets, and asset management.

@@ -23,8 +23,7 @@ export function Media() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Media</span></div>
-            <div className="page-eyebrow r-up"><span className="bar" />Media</div>
-            <h1 className="page-title r-up">See, hear, and<br /><span className="accent">relive it</span></h1>
+            <h1 className="page-title r-up"><span className="accent">Media</span></h1>
           </div>
           <p className="page-sub r-up">
             Photos, recordings, and our podcast.

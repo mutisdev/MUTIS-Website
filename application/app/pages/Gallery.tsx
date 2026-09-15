@@ -58,7 +58,7 @@ export function Gallery() {
               <Link to="/">MUTIS</Link><span>/</span><span>Media</span><span>/</span><span>Gallery</span>
             </div>
             <div className="page-eyebrow r-up"><span className="bar" />Media</div>
-            <h1 className="page-title r-up">Moments from<br />the <span className="accent">MUTIS year</span></h1>
+            <h1 className="page-title r-up"><span className="accent">Gallery</span></h1>
           </div>
           <p className="page-sub r-up">
             Conferences, socials, simulations, and speaker nights.

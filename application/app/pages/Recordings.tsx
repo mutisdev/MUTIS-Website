@@ -64,7 +64,7 @@ export function Recordings() {
               <Link to="/">MUTIS</Link><span>/</span><span>Media</span><span>/</span><span>Recordings</span>
             </div>
             <div className="page-eyebrow r-up"><span className="bar" />Media</div>
-            <h1 className="page-title r-up">Watch events<br /><span className="accent">on demand</span></h1>
+            <h1 className="page-title r-up"><span className="accent">Recordings</span></h1>
           </div>
           <p className="page-sub r-up">
             Missed a talk or panel? Catch up here.

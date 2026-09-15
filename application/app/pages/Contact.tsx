@@ -64,8 +64,7 @@ export function Contact() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Contact</span></div>
-            <div className="page-eyebrow r-up"><span className="bar" />Contact</div>
-            <h1 className="page-title r-up">Get in<br /><span className="accent">touch</span></h1>
+            <h1 className="page-title r-up"><span className="accent">Contact</span></h1>
           </div>
           <p className="page-sub r-up">Members, partners, and press. Use the form or email us.</p>
         </div>

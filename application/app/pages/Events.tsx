@@ -216,25 +216,11 @@ export function Events() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Events</span></div>
-            <div className="page-eyebrow r-up"><span className="bar" />Events</div>
-            <h1 className="page-title r-up">Where members<br />meet <span className="accent">markets</span></h1>
+            <h1 className="page-title r-up"><span className="accent">Events</span></h1>
           </div>
           <p className="page-sub r-up">Put yourself in the room with the people hiring.</p>
         </div>
       </section>
-
-      {settings.freshers_fair_banner_enabled && (
-        <section className="page-section" style={{ paddingTop: 32, paddingBottom: 32, background: "var(--pm-accent)" }}>
-          <div className="inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: "var(--base)" }}>
-              Come find us at the Freshers Fair — meet the committee and sign up on the day.
-            </p>
-            <Link to="/signup" className="btn btn-primary" style={{ textDecoration: "none", background: "var(--base)", color: "var(--pm-accent)" }}>
-              Sign up to MUTIS <span className="arrow" />
-            </Link>
-          </div>
-        </section>
-      )}
 
       <section className="page-section">
         <div className="inner">
