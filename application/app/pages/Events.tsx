@@ -1,19 +1,13 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Helmet } from "react-helmet-async";
-import DOMPurify from "dompurify";
 import { useReveal } from "@/app/hooks/useReveal";
 import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
 import { htmlToExcerpt } from "@/app/lib/htmlExcerpt";
 import { SITE_URL } from "@/app/hooks/usePageMeta";
-import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
-import { FormFeedback } from "@/app/components/FormFeedback";
-import { PrivacyConsent } from "@/app/components/PrivacyConsent";
-import { EmailField, validateEmail } from "@/app/components/EmailField";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
-import { Modal } from "@/app/components/Modal";
 
 // `summary` shows on the collapsed card; `full` and `details` are revealed on
 // expand. PENDING: fuller write-ups (format, past partners, how to take part)
@@ -135,102 +129,11 @@ const formatEventDate = (isoString: string) =>
     minute: "2-digit",
   });
 
-function EventSignupForm({ eventId }: { eventId: string }) {
-  const { status, error, submitting, fail, succeed, onFormInput } = useFormStatus();
-
-  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-
-    if ((form.elements.namedItem("bot-field") as HTMLInputElement)?.value) {
-      succeed();
-      return;
-    }
-
-    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
-    const notes = (form.elements.namedItem("notes") as HTMLTextAreaElement).value.trim();
-    const consentPrivacy = (form.elements.namedItem("consent-privacy") as HTMLInputElement).checked;
-
-    if (!name || !email || !consentPrivacy) {
-      fail("Please fill in your name and email, and agree to the Privacy Policy.");
-      return;
-    }
-
-    const emailError = validateEmail(email, true, false);
-    if (emailError) {
-      fail(emailError);
-      return;
-    }
-
-    submitting();
-
-    const { error: insertError } = await supabase
-      .from("event_signups")
-      .insert({ event_id: eventId, name, email, notes: notes || null });
-
-    if (insertError) {
-      console.error("Failed to submit event signup", insertError);
-      fail(
-        insertError.code === "23505"
-          ? "You've already signed up for this event with that email."
-          : "Something went wrong. Please try again or email us at mutis@manchesterstudentsunion.com.",
-      );
-      return;
-    }
-
-    succeed();
-    form.reset();
-  };
-
-  if (status === "sent") {
-    return (
-      <FormFeedback
-        status={status}
-        successMessage="You're signed up — see you there."
-        style={{ marginTop: 12 }}
-      />
-    );
-  }
-
-  return (
-    <form className="contact-form" onSubmit={onSubmit} onInput={onFormInput} noValidate style={{ marginTop: 16, gap: 10 }}>
-      <p className="hidden-field">
-        <label>
-          Don't fill this out if you're human: <input name="bot-field" tabIndex={-1} autoComplete="off" />
-        </label>
-      </p>
-      <div className="field">
-        <label htmlFor={`su-name-${eventId}`}>Full name *</label>
-        <input id={`su-name-${eventId}`} name="name" type="text" autoComplete="name" required />
-      </div>
-      <EmailField id={`su-email-${eventId}`} label="Email *" />
-      <div className="field">
-        <label htmlFor={`su-notes-${eventId}`}>Notes (optional)</label>
-        <textarea id={`su-notes-${eventId}`} name="notes" />
-      </div>
-      <PrivacyConsent id={`su-consent-privacy-${eventId}`} />
-      <FormFeedback status={status} error={error} />
-      <button
-        className="btn btn-primary"
-        type="submit"
-        disabled={status === "submitting"}
-        aria-busy={status === "submitting"}
-        style={{ alignSelf: "flex-start" }}
-      >
-        {status === "submitting" ? "Signing up…" : "Sign up"}
-        <span className="arrow" />
-      </button>
-    </form>
-  );
-}
-
 export function Events() {
   const { settings } = useSiteSettings();
   const [events, setEvents] = useState<EventRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [modalEvent, setModalEvent] = useState<EventRow | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -279,9 +182,8 @@ export function Events() {
   const bgImage = usePageBackgroundImage("events");
 
   // Event JSON-LD, built live from the same Supabase query above — not
-  // hardcoded. There's no per-event detail route (events only open in the
-  // modal below), so `url` points at this listing page for every entry;
-  // see SEO-AUDIT.md 3.1 for that limitation.
+  // hardcoded. Each event now has its own page at /events/:id/signup, so
+  // `url` points there instead of the listing page.
   const eventsJsonLd =
     events.length > 0
       ? {
@@ -298,7 +200,7 @@ export function Events() {
             },
             description: htmlToExcerpt(ev.description, 300),
             image: ev.cover_image_url ?? undefined,
-            url: `${SITE_URL}/events`,
+            url: `${SITE_URL}/events/${ev.id}/signup`,
           })),
         }
       : null;
@@ -364,9 +266,7 @@ export function Events() {
                     <img
                       src={ev.cover_image_url}
                       alt={ev.title}
-                      className="article-thumb"
-                      width={400}
-                      height={225}
+                      className="event-thumb"
                       loading="lazy"
                       decoding="async"
                     />
@@ -383,7 +283,7 @@ export function Events() {
                   <p className="excerpt">{htmlToExcerpt(ev.description)}</p>
                   <div className="foot">
                     <span>{ev.signup_enabled ? "Signup open" : "Details"}</span>
-                    <button type="button" className="more" onClick={() => setModalEvent(ev)}>View details →</button>
+                    <Link to={`/events/${ev.id}/signup`} className="more" style={{ textDecoration: "none" }}>View details →</Link>
                   </div>
                 </div>
               ))}
@@ -424,43 +324,6 @@ export function Events() {
           </div>
         </div>
       </section>
-
-      <Modal open={modalEvent !== null} onClose={() => setModalEvent(null)} labelledBy="event-modal-title">
-        {modalEvent && (
-          <>
-            {modalEvent.cover_image_url && (
-              <img src={modalEvent.cover_image_url} alt={modalEvent.title} className="modal-cover" width={400} height={225} />
-            )}
-            <div className="modal-body">
-              <h3 id="event-modal-title">{modalEvent.title}</h3>
-              <div className="modal-meta">
-                <span>{formatEventDate(modalEvent.starts_at)}</span>
-                <span>·</span>
-                <span>{modalEvent.location}</span>
-              </div>
-              {modalEvent.tags.length > 0 && (
-                <div className="tag-list" style={{ marginBottom: 24 }}>
-                  {modalEvent.tags.map((tag) => (
-                    <span key={tag} className="tag-badge">{tag}</span>
-                  ))}
-                </div>
-              )}
-              <div
-                className="article-body"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(modalEvent.description) }}
-              />
-              {modalEvent.signup_enabled && (
-                <>
-                  <hr className="modal-divider" />
-                  <p className="modal-signup-head">Sign up</p>
-                  <p className="modal-signup-note">Reserve your spot — we'll only use these details for this event.</p>
-                  <EventSignupForm eventId={modalEvent.id} />
-                </>
-              )}
-            </div>
-          </>
-        )}
-      </Modal>
     </>
   );
 }
