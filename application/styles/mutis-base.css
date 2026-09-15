@@ -579,16 +579,60 @@ img { display: block; max-width: 100%; }
    ========================================================== */
 
 .footer {
-  padding: 28px 52px;
+  padding: 72px 52px 0;
   background: var(--ink);
   border-top: 1px solid rgba(255,255,255,0.06);
-  display: flex; justify-content: space-between; align-items: center;
+  color: rgba(240,244,248,0.55);
+}
+.footer a { color: inherit; text-decoration: none; transition: color 0.2s ease, border-color 0.2s ease; }
+.footer a:hover { color: var(--pm-accent); }
+.footer-inner {
+  max-width: 1240px; margin: 0 auto;
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr);
+  gap: 64px;
+  padding-bottom: 56px;
+}
+.footer-logo { display: block; width: 64px; height: 64px; }
+.footer-logo img { width: 100%; height: 100%; object-fit: contain; }
+.footer-tagline {
+  margin: 20px 0 24px; max-width: 360px;
+  font-size: 14px; line-height: 1.6;
+  color: rgba(240,244,248,0.55);
+}
+.footer .footer-email {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; color: #f0f4f8;
+  border-bottom: 1px solid rgba(21,184,225,0.4);
+  padding-bottom: 2px;
+  overflow-wrap: anywhere;
+}
+.footer .footer-email:hover { color: var(--pm-accent); border-color: var(--pm-accent); }
+.footer-socials { display: flex; gap: 10px; margin-top: 24px; }
+.footer-socials a {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  color: rgba(240,244,248,0.62);
+  border: 1px solid rgba(240,244,248,0.16);
+}
+.footer .footer-socials a:hover { color: #f0f4f8; border-color: var(--pm-accent); background: var(--pm-accent-dim); }
+.footer-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.footer-heading {
+  margin: 0 0 18px;
+  font-family: var(--font-body);
+  font-size: 10px; font-weight: 600; letter-spacing: 0.26em; text-transform: uppercase;
+  color: var(--pm-accent);
+}
+.footer-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.footer-col a { font-size: 14px; line-height: 1.4; }
+.footer-bottom {
+  max-width: 1240px; margin: 0 auto;
+  padding: 24px 0 28px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
   font-size: 10px; letter-spacing: 0.26em; text-transform: uppercase;
   color: rgba(240,244,248,0.4);
 }
-.footer .links { display: flex; gap: 28px; }
-.footer a { color: inherit; text-decoration: none; transition: color 0.2s ease; }
-.footer a:hover { color: var(--pm-accent); }
+.footer-legal { display: flex; gap: 28px; }
 
 /* ==========================================================
    Upcoming event banner
@@ -725,7 +769,8 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
   .pm-hero-body { font-size: 15px; max-width: 100%; margin-bottom: 36px; }
   .pm-hero-actions { flex-wrap: wrap; }
   .pm-scroll-hint { right: 28px; }
-  .footer { flex-direction: column; gap: 14px; padding: 32px 24px; text-align: center; }
+  .footer { padding: 56px 24px 0; }
+  .footer-inner { grid-template-columns: 1fr; gap: 44px; padding-bottom: 44px; }
 }
 
 @media (max-width: 640px) {
@@ -739,8 +784,9 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
   .pm-hero-actions { flex-direction: column; align-items: stretch; gap: 10px; }
   .pm-hero-actions .pm-btn { width: 100%; justify-content: center; }
   .pm-scroll-hint { display: none; }
-  .footer { font-size: 9px; letter-spacing: 0.16em; padding: 24px 16px; gap: 12px; }
-  .footer .links { gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .footer { padding: 48px 16px 0; }
+  .footer-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 20px; }
+  .footer-bottom { flex-direction: column; align-items: flex-start; gap: 10px; font-size: 9px; letter-spacing: 0.16em; }
 }
 
 @media (max-width: 480px) {
@@ -749,5 +795,4 @@ select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
   .pm-mobile-nav { width: 100vw; }
   .pm-mobile-link { font-size: 11px; letter-spacing: 0.18em; }
   .pm-mobile-link--join { padding: 16px 18px; }
-  .footer { text-transform: none; letter-spacing: 0.12em; }
 }
