@@ -337,8 +337,9 @@ export function Events() {
 
           <Field label="Cover image">
             <div className="flex flex-col gap-[12px]">
-              <UrlColumnImageUploader bucket="event_photos" currentUrl={form.cover_image_url} aspect="banner" maxWidth={1600} onUploaded={(url) => setForm((f) => ({ ...f, cover_image_url: url }))} />
+              <UrlColumnImageUploader bucket="event_photos" currentUrl={form.cover_image_url} aspect="contain" maxWidth={1600} onUploaded={(url) => setForm((f) => ({ ...f, cover_image_url: url }))} />
               <input type="text" placeholder="Or paste an image URL" value={form.cover_image_url} onChange={(e) => setForm({ ...form, cover_image_url: e.target.value })} className="w-full rounded-[10px] border border-input bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden transition-colors focus:border-accent" />
+              <p className="text-[11px] text-muted-foreground">Posters are 1080×1350 (4:5) — uploaded images are stored at their original dimensions, not cropped.</p>
             </div>
           </Field>
 
