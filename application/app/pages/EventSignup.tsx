@@ -195,8 +195,6 @@ export function EventSignup() {
                   src={event.cover_image_url}
                   alt={event.title}
                   className="event-signup-poster"
-                  width={1080}
-                  height={1350}
                   decoding="async"
                 />
               ) : (

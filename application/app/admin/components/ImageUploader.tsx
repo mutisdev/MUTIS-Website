@@ -19,6 +19,13 @@ export type StorageBucket =
 
 type Aspect = "square" | "contain" | "banner";
 
+/** Formats every browser renders natively, so they can be stored as-is. HEIC/AVIF/etc.
+ * still go through the canvas to be converted into something universally displayable. */
+const PASSTHROUGH_TYPES = ["image/jpeg", "image/png", "image/webp"];
+/** Above this, re-encode even when no crop/resize is needed — passthrough skips all
+ * compression, and the storage buckets have no size limit of their own. */
+const PASSTHROUGH_MAX_BYTES = 2_000_000;
+
 async function loadImage(file: File): Promise<HTMLImageElement> {
   const url = URL.createObjectURL(file);
   try {
@@ -47,6 +54,19 @@ async function processImage(
   }
 
   const img = await loadImage(file);
+
+  // Nothing to crop or downscale: keep the user's exact bytes rather than losing
+  // quality (and EXIF/ICC) to a pointless canvas round-trip.
+  if (
+    !forceJpeg &&
+    aspect === "contain" &&
+    img.width <= maxWidth &&
+    file.size <= PASSTHROUGH_MAX_BYTES &&
+    PASSTHROUGH_TYPES.includes(file.type)
+  ) {
+    return { blob: file, contentType: file.type, ext: file.type.split("/")[1] };
+  }
+
   const canvas = document.createElement("canvas");
 
   let sx = 0;
