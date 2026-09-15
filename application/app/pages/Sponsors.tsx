@@ -197,12 +197,6 @@ export function Sponsors() {
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Sponsors</span></div>
             <h1 className="page-title r-up"><span className="accent">Sponsors</span></h1>
           </div>
-          <div className="sponsor-hero-cta r-up">
-            <a href="#enquire" className="btn btn-primary" style={{ textDecoration: "none" }}>
-              Enquire about Sponsorship
-              <span className="arrow" />
-            </a>
-          </div>
         </div>
       </section>
 
@@ -275,7 +269,7 @@ export function Sponsors() {
         </section>
       )}
 
-      {/* Sponsorship enquiry form — target of the nav dropdown and hero CTA */}
+      {/* Sponsorship enquiry form */}
       <section className="page-section" id="enquire">
         <div className="inner">
           <div className="contact-grid">

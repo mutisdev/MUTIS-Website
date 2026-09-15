@@ -19,11 +19,7 @@ const navLinks: NavItem[] = [
   { to: "/past-speakers", label: "Past Speakers" },
   { to: "/meif", label: "MEIF" },
   { to: "/wif", label: "WIF" },
-  {
-    to: "/sponsors",
-    label: "Sponsors",
-    children: [{ to: "/sponsors#enquire", label: "Enquire about Sponsorship" }],
-  },
+  { to: "/sponsors", label: "Sponsors" },
   { to: "/articles", label: "Articles" },
   {
     to: "/media",
@@ -180,7 +176,7 @@ export function Header() {
         </div>
 
         {/* Every link closes the panel on tap. The pathname effect above can't
-            cover same-page links like /sponsors#enquire while on /sponsors. */}
+            cover same-page links (e.g. a hash link on the current page). */}
         <div className="pm-mobile-nav-links">
           {navLinks.map((link) => (
             <div key={link.to}>

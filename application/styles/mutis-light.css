@@ -500,10 +500,6 @@
   line-height: 1.4; color: var(--ink-soft);
 }
 
-/* ---------- Sponsors: hero CTA + enquiry anchor ---------- */
-.sponsor-hero-cta { padding-bottom: 14px; }
-#enquire { scroll-margin-top: 90px; }
-
 @media (max-width: 640px) {
   .logo-bubble { width: 86px; }
   .logo-bubble-circle { width: 68px; height: 68px; padding: 12px; font-size: 18px; }
