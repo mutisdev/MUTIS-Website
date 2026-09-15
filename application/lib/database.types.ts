@@ -446,6 +446,7 @@ export type Database = {
           event_id: string
           id: string
           name: string
+          notes: string | null
           status: string
         }
         Insert: {
@@ -454,6 +455,7 @@ export type Database = {
           event_id: string
           id?: string
           name: string
+          notes?: string | null
           status?: string
         }
         Update: {
@@ -462,6 +464,7 @@ export type Database = {
           event_id?: string
           id?: string
           name?: string
+          notes?: string | null
           status?: string
         }
         Relationships: [

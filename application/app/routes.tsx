@@ -11,7 +11,6 @@ import { WIF } from "./pages/WIF";
 import { About } from "./pages/About";
 import { Team } from "./pages/Team";
 import { Events } from "./pages/Events";
-import { EventSignup } from "./pages/EventSignup";
 import { Sponsors } from "./pages/Sponsors";
 import { Articles } from "./pages/Articles";
 import { ArticleDetail } from "./pages/ArticleDetail";
@@ -180,7 +179,6 @@ export const router = createBrowserRouter([
       { path: "about", Component: About },
       { path: "team", Component: Team },
       { path: "events", Component: Events },
-      { path: "events/:eventId/signup", Component: EventSignup },
       { path: "sponsors", Component: Sponsors },
       { path: "articles", Component: Articles },
       { path: "articles/:id", Component: ArticleDetail },

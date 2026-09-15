@@ -143,7 +143,7 @@ export function Submissions() {
       .filter((r) => {
         if (!search.trim()) return true;
         const q = search.trim().toLowerCase();
-        return r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q);
+        return r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || (r.notes ?? "").toLowerCase().includes(q);
       })
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
   }, [signups, statusFilter, eventFilter, search]);
@@ -320,6 +320,7 @@ export function Submissions() {
     { key: "event", label: "Event", render: (r) => eventTitle(r.event_id), exportValue: (r) => eventTitle(r.event_id) },
     { key: "name", label: "Name", render: (r) => r.name, exportValue: (r) => r.name },
     { key: "email", label: "Email", render: (r) => r.email, exportValue: (r) => r.email },
+    { key: "notes", label: "Notes", render: (r) => (r.notes ? truncate(r.notes, 40) : "—"), exportValue: (r) => r.notes ?? "" },
     {
       key: "actions",
       label: "",
@@ -469,6 +470,7 @@ export function Submissions() {
             {detail.tab === "attendance" && "year" in detail.row && <DetailRow label="Year of study" value={detail.row.year} />}
             {detail.tab === "attendance" && "rating" in detail.row && <DetailRow label="Rating" value={`${detail.row.rating} / 5`} />}
             {"message" in detail.row && <DetailRow label="Message" value={detail.row.message} multiline />}
+            {"notes" in detail.row && detail.row.notes && <DetailRow label="Notes" value={detail.row.notes} multiline />}
             {"comments" in detail.row && detail.row.comments && <DetailRow label="Comments" value={detail.row.comments} multiline />}
 
             {detail.tab === "alumni" && "full_name" in detail.row && (

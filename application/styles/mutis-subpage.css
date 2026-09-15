@@ -720,6 +720,8 @@
 }
 .modal-close:hover { border-color: var(--pm-accent, #15b8e1); color: var(--pm-accent-2, #0e7fa3); }
 
+.modal-cover { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; border-bottom: 1px solid var(--hair, rgba(2,25,103,0.14)); }
+
 .modal-body { padding: 56px 32px 32px; }
 .modal-body h3 {
   font-family: var(--font-display);
@@ -728,48 +730,19 @@
   color: var(--ink-text, #021967);
   margin-bottom: 14px;
 }
-.modal-divider { border: none; border-top: 1px solid var(--hair, rgba(2,25,103,0.14)); margin: 32px 0; }
-
-/* ==========================================================
-   Events page card thumbnail — event posters are portrait
-   (4:5), unlike article covers, so this doesn't share
-   .article-thumb's 16:9 crop box. Sized by max-height only;
-   object-fit: contain letterboxes rather than cropping.
-   ========================================================== */
-
-.event-thumb {
-  display: block; width: 100%; max-height: 320px; object-fit: contain;
-  margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.03);
-}
-
-/* ==========================================================
-   Standalone event signup page
-   ========================================================== */
-
-.event-signup-poster-wrap { width: 100%; max-width: 420px; margin: 0 auto; }
-.event-signup-poster {
-  display: block; width: 100%; height: auto; max-width: 100%;
-  border: 1px solid var(--hair, rgba(2,25,103,0.14));
-}
-.event-signup-poster-fallback {
-  width: 100%; aspect-ratio: 4/5;
-  background: linear-gradient(180deg, var(--rise) 0%, var(--panel) 100%);
-  border: 1px solid var(--hair, rgba(2,25,103,0.14));
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-display); font-size: 15px; letter-spacing: 0.04em;
-  color: rgba(255,255,255,0.35); text-align: center; padding: 24px;
-}
-.event-signup-meta {
+.modal-meta {
   display: flex; flex-wrap: wrap; gap: 6px 14px;
   font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
-  color: var(--ink-faint, #76869f); margin-bottom: 20px;
+  color: var(--ink-faint, #76869f); margin-bottom: 24px;
 }
-.event-signup-closed {
-  font-size: 15px; line-height: 1.65; color: var(--ink-soft, #3c4a66);
-  border: 1px solid var(--hair, rgba(2,25,103,0.14));
-  padding: 20px; background: var(--surface-alt, #f2f3ee);
+.modal-divider { border: none; border-top: 1px solid var(--hair, rgba(2,25,103,0.14)); margin: 32px 0; }
+.modal-signup-head {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+  color: var(--ink-text, #021967);
+  margin-bottom: 6px;
 }
+.modal-signup-note { font-size: 14px; line-height: 1.6; color: var(--ink-soft, #3c4a66); }
 
 /* ==========================================================
    Responsive
