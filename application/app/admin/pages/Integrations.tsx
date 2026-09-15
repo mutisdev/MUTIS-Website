@@ -140,7 +140,137 @@ export function Integrations() {
           </form>
         </>
       )}
+
+      <VercelAnalyticsSection />
     </div>
+  );
+}
+
+type VercelSettingsRow = Database["public"]["Tables"]["vercel_analytics_settings"]["Row"];
+
+function VercelAnalyticsSection() {
+  const toast = useToast();
+  const [settings, setSettings] = useState<VercelSettingsRow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [teamId, setTeamId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const fetchSettings = () => {
+    supabase
+      .from("vercel_analytics_settings")
+      .select("*")
+      .eq("id", true)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) toast.error("Could not load Vercel settings.");
+        else {
+          setSettings(data);
+          setProjectId(data?.project_id ?? "");
+          setTeamId(data?.team_id ?? "");
+        }
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A token is only required the first time; afterwards the stored one is reused.
+  const canSave = !!projectId.trim() && (!!token.trim() || !!settings?.is_configured);
+
+  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!canSave) return;
+    setSaving(true);
+    const { data, error } = await supabase.functions.invoke<{ error?: string }>("vercel-analytics-set-config", {
+      body: { token: token.trim() || undefined, projectId: projectId.trim(), teamId: teamId.trim() || undefined },
+    });
+    setSaving(false);
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "Could not save the Vercel settings.");
+      return;
+    }
+    setToken("");
+    toast.success("Vercel Web Analytics connected.");
+    fetchSettings();
+  };
+
+  return (
+    <section className="mt-[48px] border-t border-border pt-[40px]">
+      <h2 className="text-[18px] font-medium text-foreground">Vercel Web Analytics</h2>
+      <p className="mt-[8px] text-[13px] leading-[1.6] text-muted-foreground">
+        Powers the site traffic charts on the Dashboard. The access token is stored encrypted in Supabase Vault and is
+        only read by the vercel-analytics Edge Function. The credentials are checked against Vercel before saving.
+      </p>
+
+      {loading ? (
+        <div className="mt-[32px] flex items-center justify-center py-[48px] text-muted-foreground">
+          <Loader2 className="h-[18px] w-[18px] animate-spin" />
+        </div>
+      ) : (
+        <>
+          <div className="mt-[24px] rounded-[10px] border border-border bg-card px-[16px] py-[14px] text-[13px] text-muted-foreground">
+            {settings?.is_configured ? (
+              <>
+                <span className="text-accent">Configured</span> — last updated{" "}
+                {new Date(settings.updated_at).toLocaleString("en-GB")}.
+              </>
+            ) : (
+              "Not configured yet — the Dashboard will show a placeholder until a token is saved."
+            )}
+          </div>
+
+          <form onSubmit={onSubmit} className="mt-[24px] flex flex-col gap-[20px]">
+            <Field label="Access token">
+              <input
+                type="password"
+                autoComplete="off"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder={settings?.is_configured ? "•••••••••••• (unchanged unless replaced)" : ""}
+                className="w-full rounded-[10px] border border-input bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden transition-colors focus:border-accent"
+              />
+            </Field>
+
+            <Field label="Project ID">
+              <input
+                type="text"
+                autoComplete="off"
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                placeholder="prj_…"
+                className="w-full rounded-[10px] border border-input bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden transition-colors focus:border-accent"
+              />
+            </Field>
+
+            <Field label="Team ID (leave blank for a personal project)">
+              <input
+                type="text"
+                autoComplete="off"
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+                placeholder="team_…"
+                className="w-full rounded-[10px] border border-input bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden transition-colors focus:border-accent"
+              />
+            </Field>
+
+            <div className="mt-[8px] flex justify-end">
+              <button
+                type="submit"
+                disabled={saving || !canSave}
+                className="rounded-[10px] bg-primary px-[16px] py-[10px] text-[13px]! font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+              >
+                {saving ? "Checking…" : "Save & verify"}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+    </section>
   );
 }
 

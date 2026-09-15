@@ -439,6 +439,41 @@ export type Database = {
           },
         ]
       }
+      vercel_analytics_settings: {
+        Row: {
+          id: boolean
+          is_configured: boolean
+          project_id: string | null
+          team_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          is_configured?: boolean
+          project_id?: string | null
+          team_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          is_configured?: boolean
+          project_id?: string | null
+          team_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vercel_analytics_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       event_signups: {
         Row: {
           created_at: string
@@ -941,6 +976,75 @@ export type Database = {
         }
         Relationships: []
       }
+      site_traffic_daily: {
+        Row: {
+          day: string
+          fetched_at: string
+          pageviews: number
+          visitors: number
+        }
+        Insert: {
+          day: string
+          fetched_at?: string
+          pageviews?: number
+          visitors?: number
+        }
+        Update: {
+          day?: string
+          fetched_at?: string
+          pageviews?: number
+          visitors?: number
+        }
+        Relationships: []
+      }
+      site_traffic_daily_breakdown: {
+        Row: {
+          day: string
+          dimension: string
+          fetched_at: string
+          pageviews: number
+          value: string
+          visitors: number
+        }
+        Insert: {
+          day: string
+          dimension: string
+          fetched_at?: string
+          pageviews?: number
+          value: string
+          visitors?: number
+        }
+        Update: {
+          day?: string
+          dimension?: string
+          fetched_at?: string
+          pageviews?: number
+          value?: string
+          visitors?: number
+        }
+        Relationships: []
+      }
+      site_traffic_monthly: {
+        Row: {
+          fetched_at: string
+          month: string
+          pageviews: number
+          visitors: number
+        }
+        Insert: {
+          fetched_at?: string
+          month: string
+          pageviews?: number
+          visitors?: number
+        }
+        Update: {
+          fetched_at?: string
+          month?: string
+          pageviews?: number
+          visitors?: number
+        }
+        Relationships: []
+      }
       sponsors: {
         Row: {
           created_at: string
@@ -1061,6 +1165,15 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_signup_summary: {
+        Row: {
+          event_signups_7d: number | null
+          members_7d: number | null
+          total_event_signups: number | null
+          total_members: number | null
+        }
+        Relationships: []
+      }
       event_attendance_stats: {
         Row: {
           attendance_count: number | null
@@ -1072,6 +1185,24 @@ export type Database = {
         }
         Relationships: []
       }
+      site_traffic_monthly_summary: {
+        Row: {
+          days_recorded: number | null
+          month: string | null
+          pageviews: number | null
+          unique_visitors: number | null
+        }
+        Relationships: []
+      }
+      site_traffic_totals: {
+        Row: {
+          days_recorded: number | null
+          last_day: string | null
+          lifetime_pageviews: number | null
+          tracked_since: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       etoro_get_secret: { Args: { secret_name: string }; Returns: string }
@@ -1079,7 +1210,23 @@ export type Database = {
         Args: { secret_name: string; secret_value: string }
         Returns: undefined
       }
+      dashboard_signup_trend: {
+        Args: { p_bucket?: string; p_days?: number }
+        Returns: {
+          bucket: string
+          event_signups: number
+          member_signups: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
+      site_traffic_top: {
+        Args: { p_dimension: string; p_limit?: number }
+        Returns: {
+          pageviews: number
+          value: string
+          visitors: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
