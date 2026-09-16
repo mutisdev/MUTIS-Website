@@ -146,15 +146,13 @@ export function ArticleDetail() {
 
       <section className="page-section">
         <div className="inner">
-          {article.body_html && (
-            <div className="article-body r-up" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.body_html) }} />
-          )}
-
-          {article.pdf_url && (
-            <div className="r-up" style={{ marginTop: article.body_html ? 40 : 0 }}>
-              <DocumentViewer url={article.pdf_url} title={article.title} />
+          {article.article_type === "pdf" && article.pdf_url ? (
+            <div className="r-up">
+              <DocumentViewer url={article.pdf_url} title={article.title} variant="inline" />
             </div>
-          )}
+          ) : article.body_html ? (
+            <div className="article-body r-up" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.body_html) }} />
+          ) : null}
 
           <div style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid var(--hair)" }}>
             <Link to="/articles" className="btn btn-ghost" style={{ textDecoration: "none" }}>
