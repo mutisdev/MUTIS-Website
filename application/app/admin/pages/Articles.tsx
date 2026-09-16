@@ -21,8 +21,8 @@ type Status = "draft" | "published";
 type ArticleType = "written" | "pdf";
 
 const PDF_BUCKET = "article_pdfs";
-/** Matches the article_pdfs bucket's file_size_limit. */
-const MAX_PDF_BYTES = 20 * 1024 * 1024;
+/** Matches the article_pdfs bucket's file_size_limit (and the project-wide 50MB upload cap). */
+const MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 function pdfPublicUrl(path: string) {
   return supabase.storage.from(PDF_BUCKET).getPublicUrl(path).data.publicUrl;
@@ -352,6 +352,7 @@ export function Articles() {
                 key={editing === "new" ? "new" : editing?.id}
                 bucket={PDF_BUCKET}
                 maxBytes={MAX_PDF_BYTES}
+                compress
                 // Only the saved row's file counts as "original" (never deleted by the uploader);
                 // after a type switch cleared pdf_url, start empty instead of re-showing it.
                 currentPath={editing !== "new" && editing && form.pdf_url === editing.pdf_url ? pdfPathFromUrl(editing.pdf_url) : null}
