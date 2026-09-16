@@ -15,13 +15,16 @@ import {
   FIRST_GENERATION_OPTIONS,
   FREE_SCHOOL_MEALS_OPTIONS,
 } from "@/app/data/diversityOptions";
-import { supabase } from "@/lib/supabase";
+import { Captcha } from "@/app/components/Captcha";
+import { useCaptcha, CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
+import { submitForm } from "@/app/lib/submitForm";
 
 const SUCCESS_TOAST_MS = 10000;
 
 export function Signup() {
   useReveal();
   const { status, error, submitting, fail, succeed, onFormInput } = useFormStatus();
+  const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
   const [ethnicity, setEthnicity] = useState("");
 
   // See AlumniRegister.tsx for why this is a floating toast rather than an
@@ -106,38 +109,19 @@ export function Signup() {
       return;
     }
 
+    if (!captchaToken) {
+      fail("Please tick the captcha box.");
+      return;
+    }
+
     submitting();
 
-    // Generated client-side (rather than read back after insert) because the
-    // public "anon" role only has INSERT on membership_signups, not SELECT —
-    // deliberately, so a visitor can't read other people's signups. Setting
-    // id explicitly here just overrides the column's own gen_random_uuid()
-    // default with a value we already know, for the diversity FK below.
-    const signupId = crypto.randomUUID();
-    const consentAt = new Date().toISOString();
-
-    const { error: insertError } = await supabase.from("membership_signups").insert({
-      id: signupId,
+    const result = await submitForm("membership", captchaToken, {
       full_name: fullName,
       email,
       course,
       year,
-      consent_share_partners: consentPrivacy,
-      consent_share_partners_at: consentAt,
-    });
-
-    if (insertError) {
-      console.error("Failed to submit membership signup", insertError);
-      fail(
-        insertError.code === "23505"
-          ? "You've already signed up with that email."
-          : "Something went wrong. Please try again, or get in touch through our Contact page."
-      );
-      return;
-    }
-
-    const { error: diversityError } = await supabase.from("membership_signup_diversity").insert({
-      signup_id: signupId,
+      consent_privacy: consentPrivacy,
       ethnicity,
       ethnicity_other_description: ETHNICITY_OTHER_VALUES.has(ethnicity) ? ethnicityOther : null,
       contextual_offer_eligible: contextualOffer,
@@ -145,9 +129,18 @@ export function Signup() {
       first_generation_student: firstGeneration,
       free_school_meals: freeSchoolMeals,
     });
-    // Diversity data is supplementary — a failure here shouldn't undo an
-    // already-successful signup, just gets logged for follow-up.
-    if (diversityError) console.error("Failed to submit diversity data", diversityError);
+    resetCaptcha();
+
+    if (!result.ok) {
+      fail(
+        result.code === "duplicate"
+          ? "You've already signed up with that email."
+          : result.code === "captcha_failed"
+            ? CAPTCHA_FAILED_MESSAGE
+            : "Something went wrong. Please try again, or get in touch through our Contact page."
+      );
+      return;
+    }
 
     succeed();
     form.reset();
@@ -325,12 +318,14 @@ export function Signup() {
                 additionalText="consent to this data being shared with partner firms to help bring better opportunities to MUTIS members"
               />
 
+              <Captcha {...captchaProps} />
+
               <FormFeedback status={status} error={error} />
 
               <button
                 className="btn btn-primary"
                 type="submit"
-                disabled={status === "submitting"}
+                disabled={status === "submitting" || !captchaToken}
                 aria-busy={status === "submitting"}
                 style={{ alignSelf: "flex-start", marginTop: 8 }}
               >

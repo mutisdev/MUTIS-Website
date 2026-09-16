@@ -113,9 +113,38 @@ const LOCAL_LOGOS = {
 | Icons | lucide-react |
 | Animations | motion (Framer Motion) |
 | Backend | Supabase (Postgres, Auth, Storage, Edge Functions) |
-| Forms | Direct Supabase inserts from the client |
+| Forms | `submit-form` Edge Function (verifies reCAPTCHA, then inserts) |
 | Hosting | Vercel |
 | Package manager | pnpm |
+
+---
+
+## Spam protection (reCAPTCHA)
+
+Every public form (Contact, Sponsorship enquiry, Event signup, Attendance, Membership sign-up, Alumni registration) shows a Google **reCAPTCHA v2 "I'm not a robot" checkbox**. Forms don't write to the database directly: they send the data plus the captcha token to the `submit-form` Edge Function (`supabase/functions/submit-form`), which checks the token with Google and only then saves the submission. The database no longer lets visitors insert into those tables themselves, so the captcha can't be skipped.
+
+### Keys
+
+| Key | Where it goes | Secret? |
+|-----|---------------|---------|
+| Site key → `VITE_RECAPTCHA_SITE_KEY` | `.env.local` for local dev, and Vercel → Project Settings → Environment Variables | No (it's in the public bundle) |
+| Secret key → `RECAPTCHA_SECRET_KEY` | `supabase secrets set RECAPTCHA_SECRET_KEY=...` **only** | **Yes, never commit it or put it in any `VITE_` variable** |
+
+Optional: `RECAPTCHA_ALLOWED_HOSTNAMES` (comma-separated), a Supabase secret that overrides the default hostname allowlist (`mutisfinancesociety.com`, `www.mutisfinancesociety.com`, `localhost`).
+
+### First-time setup / handing over to a new committee
+
+1. Go to the [reCAPTCHA admin console](https://www.google.com/recaptcha/admin) with the society Google account and create a **v2 → "I'm not a robot" Checkbox** key.
+2. Under **Domains**, add `mutisfinancesociety.com` and `localhost`.
+3. Put the site key in `.env.local` and in Vercel, then redeploy the site.
+4. Set the secret: `supabase secrets set RECAPTCHA_SECRET_KEY=<secret>`.
+5. Deploy the function: `supabase functions deploy submit-form` (JWT verification is turned off for it in `supabase/config.toml`, because visitors aren't logged in).
+
+**Deploy order matters:** deploy the function and the new frontend *before* applying the migration `20260917120000_lock_down_public_form_inserts.sql`. That migration removes direct inserts, so any older frontend still live at that point will stop submitting.
+
+### Testing locally
+
+Google publishes test keys that always pass: site key `6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI`, secret `6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe`. Put the secret in `supabase/functions/.env` (gitignored) with `RECAPTCHA_ALLOWED_HOSTNAMES=localhost,testkey.google.com`, then run `supabase functions serve submit-form --env-file supabase/functions/.env`. Don't use the test keys in production.
 
 ---
 

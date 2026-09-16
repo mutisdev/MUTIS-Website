@@ -6,7 +6,9 @@ import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
-import { supabase } from "@/lib/supabase";
+import { Captcha } from "@/app/components/Captcha";
+import { useCaptcha, CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
+import { submitForm } from "@/app/lib/submitForm";
 
 const SUCCESS_TOAST_MS = 10000;
 
@@ -65,6 +67,7 @@ export function AlumniRegister() {
   useReveal();
   const { settings } = useSiteSettings();
   const { status, error, submitting, fail, succeed, onFormInput } = useFormStatus();
+  const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   // Floating instead of an inline banner: a long form means "sent" can
@@ -111,10 +114,16 @@ export function AlumniRegister() {
   );
 
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [photoUrl, setPhotoUrl] = useState("");
+  // The cropped photo stays in the browser until submit, when it's sent with
+  // the captcha-verified submission and uploaded server-side by submit-form.
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
-  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
   const [photoError, setPhotoError] = useState("");
+
+  useEffect(() => () => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+  }, [photoPreview]);
 
   const onPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -131,26 +140,20 @@ export function AlumniRegister() {
     }
 
     setPhotoError("");
-    setPhotoUploading(true);
+    setPhotoProcessing(true);
     try {
       const blob = await cropToSquareJpeg(file);
-      const path = `${crypto.randomUUID()}.jpeg`;
-      const { error: uploadError } = await supabase.storage
-        .from("alumni_submission_photos")
-        .upload(path, blob, { contentType: "image/jpeg" });
-      if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from("alumni_submission_photos").getPublicUrl(path);
-      setPhotoUrl(data.publicUrl);
-      setPhotoPreview(data.publicUrl);
+      setPhotoBlob(blob);
+      setPhotoPreview(URL.createObjectURL(blob));
     } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+      setPhotoError(err instanceof Error ? err.message : "Could not process that image. Please try another.");
     } finally {
-      setPhotoUploading(false);
+      setPhotoProcessing(false);
     }
   };
 
   const removePhoto = () => {
-    setPhotoUrl("");
+    setPhotoBlob(null);
     setPhotoPreview("");
     setPhotoError("");
   };
@@ -201,26 +204,38 @@ export function AlumniRegister() {
       return;
     }
 
+    if (!captchaToken) {
+      fail("Please tick the captcha box.");
+      return;
+    }
+
     submitting();
 
-    const { error: insertError } = await supabase.from("alumni_submissions").insert({
-      full_name: fullName,
-      graduation_year: graduationYear,
-      degree_course: degreeCourse || null,
-      current_company: currentCompany,
-      current_position: currentPosition,
-      industry: industry || null,
-      linkedin_url: linkedinUrl || null,
-      photo_url: photoUrl || null,
-      mutis_position: mutisPosition || null,
-      consent_publish: consentPublish,
-      consent_gdpr: consentGdpr,
-      consent_at: new Date().toISOString(),
-    });
+    const result = await submitForm(
+      "alumni",
+      captchaToken,
+      {
+        full_name: fullName,
+        graduation_year: graduationYear,
+        degree_course: degreeCourse || null,
+        current_company: currentCompany,
+        current_position: currentPosition,
+        industry: industry || null,
+        linkedin_url: linkedinUrl || null,
+        mutis_position: mutisPosition || null,
+        consent_publish: consentPublish,
+        consent_gdpr: consentGdpr,
+      },
+      photoBlob
+    );
+    resetCaptcha();
 
-    if (insertError) {
-      console.error("Failed to submit alumni registration", insertError);
-      fail(`Something went wrong. Please try again or email us at ${settings.contact_email}.`);
+    if (!result.ok) {
+      fail(
+        result.code === "captcha_failed"
+          ? CAPTCHA_FAILED_MESSAGE
+          : `Something went wrong. Please try again or email us at ${settings.contact_email}.`
+      );
       return;
     }
 
@@ -394,12 +409,12 @@ export function AlumniRegister() {
                         type="button"
                         className="btn btn-ghost"
                         style={{ textDecoration: "none", fontSize: 12, padding: "10px 16px" }}
-                        disabled={photoUploading}
+                        disabled={photoProcessing}
                         onClick={() => photoInputRef.current?.click()}
                       >
-                        {photoUploading ? "Uploading…" : photoPreview ? "Replace photo" : "Choose photo"}
+                        {photoProcessing ? "Processing…" : photoPreview ? "Replace photo" : "Choose photo"}
                       </button>
-                      {photoPreview && !photoUploading && (
+                      {photoPreview && !photoProcessing && (
                         <button
                           type="button"
                           onClick={removePhoto}
@@ -409,7 +424,7 @@ export function AlumniRegister() {
                           <X style={{ width: 16, height: 16 }} />
                         </button>
                       )}
-                      {photoUploading && <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />}
+                      {photoProcessing && <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />}
                     </div>
                     <FieldError id="al-photo-error" message={photoError || undefined} />
                   </div>
@@ -443,12 +458,14 @@ export function AlumniRegister() {
 
                   <PrivacyConsent id="al-consent-gdpr" name="consent-gdpr" error={fieldErrors.consentGdpr} />
 
+                  <Captcha {...captchaProps} />
+
                   <FormFeedback status={status} error={error} />
 
                   <button
                     className="btn btn-primary"
                     type="submit"
-                    disabled={status === "submitting" || photoUploading}
+                    disabled={status === "submitting" || photoProcessing || !captchaToken}
                     aria-busy={status === "submitting"}
                     style={{ alignSelf: "flex-start", marginTop: 8 }}
                   >

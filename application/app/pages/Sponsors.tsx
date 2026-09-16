@@ -9,6 +9,9 @@ import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import { EmailField, validateEmail } from "@/app/components/EmailField";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { Captcha } from "@/app/components/Captcha";
+import { useCaptcha, CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
+import { submitForm } from "@/app/lib/submitForm";
 
 // Past event photos for the sponsorship showcase belt.
 const eventImageModules = import.meta.glob(
@@ -103,6 +106,7 @@ function SponsorGridSkeleton() {
 export function Sponsors() {
   const { settings } = useSiteSettings();
   const { status, error, submitting, fail, succeed, onFormInput } = useFormStatus();
+  const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
   const [sponsors, setSponsors] = useState<SponsorRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -175,13 +179,22 @@ export function Sponsors() {
       fail(emailError);
       return;
     }
+    if (!captchaToken) {
+      fail("Please tick the captcha box.");
+      return;
+    }
+
     submitting();
 
-    const { error: insertError } = await supabase.from("sponsorship_enquiries").insert(data);
+    const result = await submitForm("sponsorship", captchaToken, { ...data, consent_privacy: consentPrivacy });
+    resetCaptcha();
 
-    if (insertError) {
-      console.error("Failed to submit sponsorship enquiry", insertError);
-      fail(`Something went wrong. Please email us directly at ${settings.contact_email}.`);
+    if (!result.ok) {
+      fail(
+        result.code === "captcha_failed"
+          ? CAPTCHA_FAILED_MESSAGE
+          : `Something went wrong. Please email us directly at ${settings.contact_email}.`
+      );
       return;
     }
 
@@ -305,6 +318,8 @@ export function Sponsors() {
 
                 <PrivacyConsent id="sp-consent-privacy" />
 
+                <Captcha {...captchaProps} />
+
                 <FormFeedback
                   status={status}
                   error={error}
@@ -314,7 +329,7 @@ export function Sponsors() {
                 <button
                   className="btn btn-primary"
                   type="submit"
-                  disabled={status === "submitting"}
+                  disabled={status === "submitting" || !captchaToken}
                   aria-busy={status === "submitting"}
                   style={{ alignSelf: "flex-start", marginTop: 8 }}
                 >
