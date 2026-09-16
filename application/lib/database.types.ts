@@ -1221,7 +1221,6 @@ export type Database = {
           member_signups: number
         }[]
       }
-      is_admin: { Args: never; Returns: boolean }
       site_traffic_top: {
         Args: { p_dimension: string; p_limit?: number }
         Returns: {
