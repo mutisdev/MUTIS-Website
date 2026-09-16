@@ -2,6 +2,7 @@ import { useRef, useState, type DragEvent } from "react";
 import { UploadCloud, FileText, X, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "./Toast";
+import { compressPdf, COMPRESS_THRESHOLD_BYTES, MAX_COMPRESS_INPUT_BYTES } from "../lib/compressPdf";
 
 const DEFAULT_BUCKET = "meif_files";
 
@@ -14,6 +15,8 @@ interface PdfUploaderProps {
   bucket?: string;
   /** Client-side guard; keep in step with the bucket's file_size_limit. */
   maxBytes?: number;
+  /** Shrink PDFs over 5MB in the browser (Ghostscript) before checking maxBytes and uploading. */
+  compress?: boolean;
   currentPath?: string | null;
   currentFileSizeBytes?: number | null;
   onChange: (result: PdfUploadResult | null) => void;
@@ -34,27 +37,50 @@ function fileNameFromPath(path: string) {
  * DocumentViewer. Storage cleanup only ever touches files uploaded in this
  * session — the original saved file (if editing) is left alone unless the
  * form is actually saved, so cancelling never deletes a live document. */
-export function PdfUploader({ bucket = DEFAULT_BUCKET, maxBytes, currentPath, currentFileSizeBytes, onChange }: PdfUploaderProps) {
+export function PdfUploader({ bucket = DEFAULT_BUCKET, maxBytes, compress = false, currentPath, currentFileSizeBytes, onChange }: PdfUploaderProps) {
   const toast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [statusText, setStatusText] = useState("Uploading…");
   const [dragOver, setDragOver] = useState(false);
   const [path, setPath] = useState<string | null>(currentPath ?? null);
   const [fileSizeBytes, setFileSizeBytes] = useState<number | null>(currentFileSizeBytes ?? null);
 
   const previewUrl = path ? supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl : null;
 
-  const upload = async (file: File) => {
-    if (file.type !== "application/pdf") {
+  const upload = async (original: File) => {
+    if (original.type !== "application/pdf") {
       toast.error("Please choose a PDF file.");
       return;
     }
-    if (maxBytes != null && file.size > maxBytes) {
-      toast.error(`That PDF is ${formatBytes(file.size)} — the limit is ${formatBytes(maxBytes)}.`);
+    const tooBigToCompress = original.size > MAX_COMPRESS_INPUT_BYTES;
+    if (maxBytes != null && original.size > maxBytes && (!compress || tooBigToCompress)) {
+      toast.error(
+        compress
+          ? `That PDF is ${formatBytes(original.size)} — too large to compress in the browser (max ${formatBytes(MAX_COMPRESS_INPUT_BYTES)}).`
+          : `That PDF is ${formatBytes(original.size)} — the limit is ${formatBytes(maxBytes)}.`,
+      );
       return;
     }
     setUploading(true);
     try {
+      let file = original;
+      let compressedNote = "";
+      if (compress && original.size > COMPRESS_THRESHOLD_BYTES) {
+        const result = await compressPdf(original, maxBytes ?? Infinity, (preset) =>
+          setStatusText(preset === "/printer" ? `Compressing ${formatBytes(original.size)}…` : "Compressing further…"),
+        );
+        file = result.file;
+        if (result.compressed) compressedNote = ` Compressed from ${formatBytes(result.originalBytes)} to ${formatBytes(file.size)}.`;
+      }
+      if (maxBytes != null && file.size > maxBytes) {
+        throw new Error(
+          file === original
+            ? `That PDF is ${formatBytes(file.size)} and couldn't be compressed — the limit is ${formatBytes(maxBytes)}.`
+            : `Even compressed, that PDF is ${formatBytes(file.size)} — the limit is ${formatBytes(maxBytes)}. Try splitting it or reducing its images.`,
+        );
+      }
+      setStatusText(`Uploading ${formatBytes(file.size)}…`);
       const newPath = `${crypto.randomUUID()}.pdf`;
       const { error } = await supabase.storage.from(bucket).upload(newPath, file, { contentType: "application/pdf" });
       if (error) throw error;
@@ -68,11 +94,12 @@ export function PdfUploader({ bucket = DEFAULT_BUCKET, maxBytes, currentPath, cu
       setPath(newPath);
       setFileSizeBytes(file.size);
       onChange({ path: newPath, fileSizeBytes: file.size });
-      toast.success("PDF uploaded.");
+      toast.success(`PDF uploaded.${compressedNote}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setUploading(false);
+      setStatusText("Uploading…");
     }
   };
 
@@ -118,9 +145,9 @@ export function PdfUploader({ bucket = DEFAULT_BUCKET, maxBytes, currentPath, cu
             <UploadCloud className="h-[22px] w-[22px] text-muted-foreground" />
           )}
           <p className="text-[13px]! font-medium text-foreground">
-            {uploading ? "Uploading…" : "Drag & drop a PDF here, or click to browse"}
+            {uploading ? statusText : "Drag & drop a PDF here, or click to browse"}
           </p>
-          <p className="text-[12px] text-muted-foreground">PDF files only{maxBytes != null ? `, up to ${formatBytes(maxBytes)}` : ""}</p>
+          <p className="text-[12px] text-muted-foreground">PDF files only{maxBytes != null ? `, up to ${formatBytes(maxBytes)}` : ""}{compress ? " — large files are compressed automatically" : ""}</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-[12px] border border-border">

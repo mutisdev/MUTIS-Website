@@ -9,6 +9,7 @@
     "dev": "vite"
   },
   "dependencies": {
+    "@okathira/ghostpdl-wasm": "1.1.0",
     "@supabase/supabase-js": "^2.111.0",
     "@tiptap/extension-image": "^3.29.2",
     "@tiptap/extension-link": "^3.29.2",

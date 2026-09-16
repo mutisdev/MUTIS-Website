@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@okathira/ghostpdl-wasm':
+        specifier: 1.1.0
+        version: 1.1.0
       '@supabase/supabase-js':
         specifier: ^2.111.0
         version: 2.111.0
@@ -459,6 +462,9 @@ packages:
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
+
+  '@okathira/ghostpdl-wasm@1.1.0':
+    resolution: {integrity: sha512-BX0Y8B0G/c0nsf7pZGHPQTZ8IiT4w0IEbZGDnziN4pkcmxU1eEaWI/LA0bfE5Y+uSP3Qj1oZ6JhITOJbJsyE0w==}
 
   '@reduxjs/toolkit@2.12.0':
     resolution: {integrity: sha512-KiT+RzZbp6mQET+Mg+h2c97+9j1sNflUxQkIHI7Yuzf6Peu+OYpmkn6nbHWmLLWj+1ZODUJFwGZ7gx3L9R9EOw==}
@@ -976,6 +982,9 @@ packages:
 
   '@types/d3-timer@3.0.2':
     resolution: {integrity: sha512-Ps3T8E8dZDam6fUyNiMkekK3XUsaUEik+idO9/YjPtfj2qruF8tFBXS7XhtE4iIXBLxhmLjP3SXpLhVf21I9Lw==}
+
+  '@types/emscripten@1.41.6':
+    resolution: {integrity: sha512-uN+9i8bFT5CUcZfyIEYDrSueACEyKGbUs5kC/72DGlZZoinh84sJfVV0i8UOJD1asdzkvLPBRrKs41kZ8MdEXg==}
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
@@ -2003,6 +2012,10 @@ snapshots:
 
   '@noble/hashes@1.8.0': {}
 
+  '@okathira/ghostpdl-wasm@1.1.0':
+    dependencies:
+      '@types/emscripten': 1.41.6
+
   '@reduxjs/toolkit@2.12.0(react-redux@9.3.0(@types/react@19.2.14)(react@18.3.1)(redux@5.0.1))(react@18.3.1)':
     dependencies:
       '@standard-schema/spec': 1.1.0
@@ -2444,6 +2457,8 @@ snapshots:
   '@types/d3-time@3.0.4': {}
 
   '@types/d3-timer@3.0.2': {}
+
+  '@types/emscripten@1.41.6': {}
 
   '@types/estree@1.0.8': {}
 
