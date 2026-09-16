@@ -11,6 +11,9 @@ import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import { EmailField, validateEmail } from "@/app/components/EmailField";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { Captcha } from "@/app/components/Captcha";
+import { useCaptcha, CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
+import { submitForm } from "@/app/lib/submitForm";
 
 type EventRow = Tables<"events">;
 
@@ -30,6 +33,7 @@ export function EventSignup() {
   const [loadError, setLoadError] = useState("");
 
   const { status, error, submitting, fail, succeed, reset, onFormInput } = useFormStatus();
+  const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,18 +105,28 @@ export function EventSignup() {
       return;
     }
 
+    if (!captchaToken) {
+      fail("Please tick the captcha box.");
+      return;
+    }
+
     submitting();
 
-    const { error: insertError } = await supabase
-      .from("event_signups")
-      .insert({ event_id: event.id, name, email });
+    const result = await submitForm("event_signup", captchaToken, {
+      event_id: event.id,
+      name,
+      email,
+      consent_privacy: consentPrivacy,
+    });
+    resetCaptcha();
 
-    if (insertError) {
-      console.error("Failed to submit event signup", insertError);
+    if (!result.ok) {
       fail(
-        insertError.code === "23505"
+        result.code === "duplicate"
           ? "You've already signed up for this event with that email."
-          : "Something went wrong. Please try again or email us at mutis@manchesterstudentsunion.com.",
+          : result.code === "captcha_failed"
+            ? CAPTCHA_FAILED_MESSAGE
+            : "Something went wrong. Please try again or email us at mutis@manchesterstudentsunion.com.",
       );
       return;
     }
@@ -251,11 +265,12 @@ export function EventSignup() {
                   </div>
                   <EmailField id="su-email" label="Email *" />
                   <PrivacyConsent id="su-consent-privacy" />
+                  <Captcha {...captchaProps} />
                   <FormFeedback status={status} error={error} />
                   <button
                     className="btn btn-primary"
                     type="submit"
-                    disabled={status === "submitting"}
+                    disabled={status === "submitting" || !captchaToken}
                     aria-busy={status === "submitting"}
                     style={{ alignSelf: "flex-start" }}
                   >

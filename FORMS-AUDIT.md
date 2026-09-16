@@ -1,5 +1,10 @@
 # Forms Audit — Confirmation Messages & 404 Page
 
+> **Update (reCAPTCHA):** every public form now also requires a reCAPTCHA v2 checkbox, and submissions
+> go through the `submit-form` Edge Function (captcha verified server-side, then inserted with the
+> service role) instead of direct client inserts. The honeypot is kept as an extra layer. See the
+> "Spam protection" section in `README.md`.
+
 Full inventory of every form on the site, its state before this pass, and what was fixed.
 Companion doc to `design_brief.md`. See "Part 2" below for the 404 page.
 

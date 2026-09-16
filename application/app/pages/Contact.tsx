@@ -7,13 +7,16 @@ import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import { EmailField, validateEmail } from "@/app/components/EmailField";
-import { supabase } from "@/lib/supabase";
+import { Captcha } from "@/app/components/Captcha";
+import { useCaptcha, CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
+import { submitForm } from "@/app/lib/submitForm";
 
 export function Contact() {
   useReveal();
   const bgImage = usePageBackgroundImage("contact");
   const { settings } = useSiteSettings();
   const { status, error, submitting, fail, succeed, onFormInput } = useFormStatus();
+  const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -44,13 +47,22 @@ export function Contact() {
       return;
     }
 
+    if (!captchaToken) {
+      fail("Please tick the captcha box.");
+      return;
+    }
+
     submitting();
 
-    const { error: insertError } = await supabase.from("contact_submissions").insert(data);
+    const result = await submitForm("contact", captchaToken, { ...data, consent_privacy: consentPrivacy });
+    resetCaptcha();
 
-    if (insertError) {
-      console.error("Failed to submit contact message", insertError);
-      fail(`Something went wrong sending your message. Please email us directly at ${settings.contact_email}.`);
+    if (!result.ok) {
+      fail(
+        result.code === "captcha_failed"
+          ? CAPTCHA_FAILED_MESSAGE
+          : `Something went wrong sending your message. Please email us directly at ${settings.contact_email}.`
+      );
       return;
     }
 
@@ -101,6 +113,8 @@ export function Contact() {
 
                 <PrivacyConsent id="contact-consent-privacy" />
 
+                <Captcha {...captchaProps} />
+
                 <FormFeedback
                   status={status}
                   error={error}
@@ -110,7 +124,7 @@ export function Contact() {
                 <button
                   className="btn btn-primary"
                   type="submit"
-                  disabled={status === "submitting"}
+                  disabled={status === "submitting" || !captchaToken}
                   aria-busy={status === "submitting"}
                   style={{ alignSelf: "flex-start", marginTop: 8 }}
                 >

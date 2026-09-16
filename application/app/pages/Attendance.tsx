@@ -8,6 +8,9 @@ import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import { EmailField, validateEmail } from "@/app/components/EmailField";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { Captcha } from "@/app/components/Captcha";
+import { useCaptcha, CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
+import { submitForm } from "@/app/lib/submitForm";
 
 type EventRow = Tables<"events">;
 
@@ -17,6 +20,7 @@ export function Attendance() {
   useReveal();
   const { settings } = useSiteSettings();
   const { status, error, submitting, fail, succeed, reset, onFormInput } = useFormStatus();
+  const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
   const [rating, setRating] = useState<number | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
@@ -75,9 +79,14 @@ export function Attendance() {
       return;
     }
 
+    if (!captchaToken) {
+      fail("Please tick the captcha box.");
+      return;
+    }
+
     submitting();
 
-    const { error: insertError } = await supabase.from("attendance_submissions").insert({
+    const result = await submitForm("attendance", captchaToken, {
       event_id: eventId === OTHER_EVENT ? null : eventId,
       other_event_name: eventId === OTHER_EVENT ? otherEventName : null,
       name,
@@ -86,14 +95,17 @@ export function Attendance() {
       year,
       rating,
       comments: comments || null,
+      consent_privacy: consentPrivacy,
     });
+    resetCaptcha();
 
-    if (insertError) {
-      console.error("Failed to submit attendance", insertError);
+    if (!result.ok) {
       fail(
-        insertError.code === "23505"
+        result.code === "duplicate"
           ? "You've already logged your attendance for this event with that email."
-          : `Something went wrong. Please try again or email us at ${settings.contact_email}.`
+          : result.code === "captcha_failed"
+            ? CAPTCHA_FAILED_MESSAGE
+            : `Something went wrong. Please try again or email us at ${settings.contact_email}.`
       );
       return;
     }
@@ -289,12 +301,14 @@ export function Attendance() {
 
                   <PrivacyConsent id="att-consent-privacy" />
 
+                  <Captcha {...captchaProps} />
+
                   <FormFeedback status={status} error={error} />
 
                   <button
                     className="btn btn-primary"
                     type="submit"
-                    disabled={status === "submitting"}
+                    disabled={status === "submitting" || !captchaToken}
                     aria-busy={status === "submitting"}
                     style={{ alignSelf: "flex-start", marginTop: 8 }}
                   >
