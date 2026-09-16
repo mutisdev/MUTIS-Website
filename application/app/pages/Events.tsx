@@ -9,96 +9,6 @@ import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
-// `summary` shows on the collapsed card; `full` and `details` are revealed on
-// expand. PENDING: fuller write-ups (format, past partners, how to take part)
-// from the committee — only facts already published on the site are used here.
-const FLAGSHIP = [
-  {
-    num: "E.01",
-    title: "Women in Finance Conference",
-    term: "Autumn Term",
-    summary: "Senior women from across finance, on campus for a day.",
-    full: "A flagship day bringing senior women from across investment banking, asset management, and markets onto campus.",
-    details: [["Format", "Conference"], ["Sectors", "Investment banking · Asset management · Markets"]],
-    foot: "Manchester",
-  },
-  {
-    num: "E.02",
-    title: "UK Student Finance Summit",
-    term: "Spring Term",
-    summary: "The UK's largest cross-university finance student gathering.",
-    full: "The largest cross-university gathering of finance students in the UK, hosted by MUTIS in partnership with leading firms.",
-    details: [["Format", "Summit"], ["Open to", "Finance students from universities across the UK"]],
-    foot: "Manchester",
-  },
-  {
-    num: "E.03",
-    title: "M&A Challenge",
-    term: "Year-round",
-    summary: "A year-long live deal simulation, judged by bankers.",
-    full: "A live deal simulation run across the year, judged by working bankers from sponsor firms.",
-    details: [["Format", "Live deal simulation"], ["Judged by", "Working bankers from sponsor firms"]],
-    foot: "Manchester",
-  },
-  {
-    num: "E.04",
-    title: "The Shade Tree",
-    term: "Spring Term",
-    summary: "A 25-year student-run investment initiative with Alliance MBS.",
-    full: "A 25-year, student-run investment initiative run annually with Alliance Manchester Business School, where MUTIS teams pitch real long-term investment theses for capital donated by alumni Adam and Sara Franks.",
-    details: [["Format", "Investment pitch"], ["Partner", "Alliance Manchester Business School"]],
-    foot: "Manchester",
-  },
-];
-
-function FlagshipCard({ event }: { event: (typeof FLAGSHIP)[number] }) {
-  const [open, setOpen] = useState(false);
-  const panelId = `flagship-${event.num}`;
-  const toggle = () => setOpen((v) => !v);
-
-  // The whole card toggles on click for convenience; the button in the
-  // footer is the accessible control (keyboard + screen readers).
-  // Open state lives in data-open, not className: useReveal adds the "in"
-  // class to .r-up elements directly, and a React className change would
-  // wipe it and hide the card again.
-  return (
-    <div className="dark-card flagship-card r-up" data-open={open} onClick={toggle}>
-      <div className="num">{event.num}</div>
-      <h3>{event.title}</h3>
-      <div className="meta">{event.term}</div>
-      <p>{event.summary}</p>
-      <div className="flagship-more" id={panelId} aria-hidden={!open}>
-        <div>
-          <p>{event.full}</p>
-          <dl className="flagship-details">
-            {event.details.map(([label, value]) => (
-              <div key={label}>
-                <dt>{label}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </div>
-      <div className="foot">
-        <span>{event.foot}</span>
-        <button
-          type="button"
-          className="more"
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggle();
-          }}
-        >
-          {open ? "Show less ↑" : "Read more ↓"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 const eventImageModules = import.meta.glob(
   "../../assets/events/*.{jpg,jpeg,png,webp,avif,JPG,JPEG,PNG,WEBP,AVIF}",
   { eager: true, import: "default" },
@@ -178,7 +88,7 @@ export function Events() {
     };
   }, []);
 
-  useReveal([FLAGSHIP.length, events.length, isLoading, loadError]);
+  useReveal([events.length, isLoading, loadError]);
   const bgImage = usePageBackgroundImage("events");
 
   // Event JSON-LD, built live from the same Supabase query above — not
@@ -224,18 +134,6 @@ export function Events() {
 
       <section className="page-section">
         <div className="inner">
-          <div className="page-eyebrow r-up"><span className="bar" />Flagship</div>
-          <h2 className="r-up">Four events define the year</h2>
-          <div className="card-grid flagship-grid">
-            {FLAGSHIP.map((e) => (
-              <FlagshipCard key={e.num} event={e} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="page-section" style={{ background: "var(--base)", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        <div className="inner">
           <div className="page-eyebrow r-up"><span className="bar" />Upcoming</div>
           <h2 className="r-up">Upcoming events</h2>
           {isLoading ? (
@@ -278,7 +176,7 @@ export function Events() {
         </div>
       </section>
 
-      <section className="page-section">
+      <section className="page-section" style={{ background: "var(--base)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
         <div className="inner">
           <div className="page-eyebrow r-up"><span className="bar" />Past Events</div>
           <h2 className="r-up">Past examples of events</h2>

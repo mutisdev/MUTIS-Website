@@ -93,7 +93,7 @@ export function Articles() {
                   <div className="num">{a.tag}</div>
                   <h3>{a.title}</h3>
                   <div className="meta"><span>{a.author_name}</span><span>·</span><span>{formatDate(a.published_at)}</span></div>
-                  <div className="foot"><span>Member Research</span><span className="more">Read more →</span></div>
+                  <div className="foot"><span>{a.article_type === "pdf" ? "PDF" : "Member Research"}</span><span className="more">Read more →</span></div>
                 </Link>
               ))}
             </div>

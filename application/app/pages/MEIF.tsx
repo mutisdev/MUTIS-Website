@@ -290,7 +290,7 @@ export function MEIF() {
         {openDocument && (
           <div className="modal-body">
             <h3 id="coverage-note-title">{openDocument.title}</h3>
-            <DocumentViewer url={documentUrl(openDocument.storage_path)} title={openDocument.title} height={480} />
+            <DocumentViewer url={documentUrl(openDocument.storage_path)} title={openDocument.title} variant="modal" height={480} />
           </div>
         )}
       </Modal>

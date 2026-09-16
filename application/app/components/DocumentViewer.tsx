@@ -1,37 +1,29 @@
-import { Download } from "lucide-react";
-
-interface DocumentViewerProps {
-  url: string;
-  title: string;
-  height?: number;
-}
+import { lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
+import type { PdfViewerProps } from "./PdfViewer";
 
 /**
- * Native browser PDF rendering via <object>, rather than pulling in
- * pdf.js/react-pdf: it works everywhere without a bundler-side worker-file
- * setup, and falls back to a plain link automatically wherever inline PDF
- * rendering isn't supported.
+ * pdf.js (react-pdf + its worker) is around 1MB, so the viewer is split into
+ * its own chunk and only fetched when a page actually shows a PDF. Public
+ * routes are imported eagerly, so this lazy boundary is what keeps it out of
+ * the main bundle.
  */
-export function DocumentViewer({ url, title, height = 640 }: DocumentViewerProps) {
+const PdfViewer = lazy(() => import("./PdfViewer"));
+
+export function DocumentViewer(props: PdfViewerProps) {
+  const height = props.height ?? (props.variant === "modal" ? 480 : "min(85vh, 960px)");
   return (
-    <div className="document-viewer">
-      <object data={url} type="application/pdf" className="document-viewer-frame" style={{ height }}>
-        <p className="document-viewer-fallback">
-          Your browser can&apos;t preview this PDF inline.{" "}
-          <a href={url} target="_blank" rel="noreferrer">Open {title} in a new tab</a>.
-        </p>
-      </object>
-      <a
-        href={url}
-        download
-        target="_blank"
-        rel="noreferrer"
-        className="btn btn-ghost document-viewer-download"
-        style={{ textDecoration: "none" }}
-      >
-        <Download size={15} strokeWidth={1.8} aria-hidden="true" />
-        Download {title}
-      </a>
-    </div>
+    <Suspense
+      fallback={
+        <div className="pdf-viewer">
+          <div className="pdf-viewer-status" style={{ height }}>
+            <Loader2 size={20} className="pdf-viewer-spin" aria-hidden="true" />
+            <span>Loading viewer…</span>
+          </div>
+        </div>
+      }
+    >
+      <PdfViewer {...props} />
+    </Suspense>
   );
 }

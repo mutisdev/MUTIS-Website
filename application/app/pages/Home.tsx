@@ -152,7 +152,7 @@ function Hero() {
             <span className="pm-btn-arrow" />
           </Tilt>
           <Tilt to="/events" className="pm-btn pm-btn--ghost" intensity={8} style={{ textDecoration: "none" }}>
-            Flagship Events
+            Events
             <span className="pm-btn-arrow" />
           </Tilt>
         </div>
@@ -369,7 +369,7 @@ function EventsSection() {
       <div className="pm-events-inner">
         <div className="pm-events-head">
           <h2>
-            {["Flagship", "Events"].map((w, i) => (
+            {["Events"].map((w, i) => (
               <span className="pm-reveal-line" key={i}>
                 <span style={{
                   display: "inline-block",

@@ -3,7 +3,7 @@ import { UploadCloud, FileText, X, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "./Toast";
 
-const BUCKET = "meif_files";
+const DEFAULT_BUCKET = "meif_files";
 
 export interface PdfUploadResult {
   path: string;
@@ -11,6 +11,9 @@ export interface PdfUploadResult {
 }
 
 interface PdfUploaderProps {
+  bucket?: string;
+  /** Client-side guard; keep in step with the bucket's file_size_limit. */
+  maxBytes?: number;
   currentPath?: string | null;
   currentFileSizeBytes?: number | null;
   onChange: (result: PdfUploadResult | null) => void;
@@ -31,7 +34,7 @@ function fileNameFromPath(path: string) {
  * DocumentViewer. Storage cleanup only ever touches files uploaded in this
  * session — the original saved file (if editing) is left alone unless the
  * form is actually saved, so cancelling never deletes a live document. */
-export function PdfUploader({ currentPath, currentFileSizeBytes, onChange }: PdfUploaderProps) {
+export function PdfUploader({ bucket = DEFAULT_BUCKET, maxBytes, currentPath, currentFileSizeBytes, onChange }: PdfUploaderProps) {
   const toast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -39,23 +42,27 @@ export function PdfUploader({ currentPath, currentFileSizeBytes, onChange }: Pdf
   const [path, setPath] = useState<string | null>(currentPath ?? null);
   const [fileSizeBytes, setFileSizeBytes] = useState<number | null>(currentFileSizeBytes ?? null);
 
-  const previewUrl = path ? supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl : null;
+  const previewUrl = path ? supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl : null;
 
   const upload = async (file: File) => {
     if (file.type !== "application/pdf") {
       toast.error("Please choose a PDF file.");
       return;
     }
+    if (maxBytes != null && file.size > maxBytes) {
+      toast.error(`That PDF is ${formatBytes(file.size)} — the limit is ${formatBytes(maxBytes)}.`);
+      return;
+    }
     setUploading(true);
     try {
       const newPath = `${crypto.randomUUID()}.pdf`;
-      const { error } = await supabase.storage.from(BUCKET).upload(newPath, file, { contentType: "application/pdf" });
+      const { error } = await supabase.storage.from(bucket).upload(newPath, file, { contentType: "application/pdf" });
       if (error) throw error;
 
       // Only clean up a same-session upload being replaced — never the
       // original file this component was opened with.
       if (path && path !== currentPath) {
-        await supabase.storage.from(BUCKET).remove([path]);
+        await supabase.storage.from(bucket).remove([path]);
       }
 
       setPath(newPath);
@@ -84,7 +91,7 @@ export function PdfUploader({ currentPath, currentFileSizeBytes, onChange }: Pdf
 
   const onRemove = async () => {
     if (path && path !== currentPath) {
-      await supabase.storage.from(BUCKET).remove([path]);
+      await supabase.storage.from(bucket).remove([path]);
     }
     setPath(null);
     setFileSizeBytes(null);
@@ -113,7 +120,7 @@ export function PdfUploader({ currentPath, currentFileSizeBytes, onChange }: Pdf
           <p className="text-[13px]! font-medium text-foreground">
             {uploading ? "Uploading…" : "Drag & drop a PDF here, or click to browse"}
           </p>
-          <p className="text-[12px] text-muted-foreground">PDF files only</p>
+          <p className="text-[12px] text-muted-foreground">PDF files only{maxBytes != null ? `, up to ${formatBytes(maxBytes)}` : ""}</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-[12px] border border-border">
