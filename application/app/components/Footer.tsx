@@ -30,7 +30,7 @@ const COLUMNS: { heading: string; links: { to: string; label: string }[] }[] = [
     links: [
       { to: "/join", label: "Join MUTIS" },
       { to: "/sponsors", label: "Sponsors" },
-      { to: "/attendance", label: "Log Attendance" },
+      { to: "/attendance", label: "Event feedback" },
       { to: "/media", label: "Media" },
       { to: "/contact", label: "Contact" },
     ],

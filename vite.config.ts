@@ -9,6 +9,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": "/application",
+      // Code shared with the Supabase Edge Functions (e.g. the uni-email rules).
+      "@shared": "/supabase/functions/_shared",
     },
   },
 });

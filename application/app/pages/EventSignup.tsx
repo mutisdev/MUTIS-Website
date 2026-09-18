@@ -8,7 +8,8 @@ import { DEFAULT_DESCRIPTION } from "@/app/hooks/usePageMeta";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
-import { EmailField, validateEmail } from "@/app/components/EmailField";
+import { UniEmailField, validateUniEmail } from "@/app/components/EmailField";
+import { normaliseEmail } from "@shared/uniEmail";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { Captcha } from "@/app/components/Captcha";
@@ -95,11 +96,11 @@ export function EventSignup() {
     const consentPrivacy = (form.elements.namedItem("consent-privacy") as HTMLInputElement).checked;
 
     if (!name || !email || !consentPrivacy) {
-      fail("Please fill in your name and email, and agree to the Privacy Policy.");
+      fail("Please fill in your name and university email, and agree to the Privacy Policy.");
       return;
     }
 
-    const emailError = validateEmail(email, true, false);
+    const emailError = validateUniEmail(email);
     if (emailError) {
       fail(emailError);
       return;
@@ -115,7 +116,7 @@ export function EventSignup() {
     const result = await submitForm("event_signup", captchaToken, {
       event_id: event.id,
       name,
-      email,
+      email: normaliseEmail(email),
       consent_privacy: consentPrivacy,
     });
     resetCaptcha();
@@ -263,7 +264,7 @@ export function EventSignup() {
                     <label htmlFor="su-name">Full name *</label>
                     <input id="su-name" name="name" type="text" autoComplete="name" required />
                   </div>
-                  <EmailField id="su-email" label="Email *" />
+                  <UniEmailField id="su-email" />
                   <PrivacyConsent id="su-consent-privacy" />
                   <Captcha {...captchaProps} />
                   <FormFeedback status={status} error={error} />

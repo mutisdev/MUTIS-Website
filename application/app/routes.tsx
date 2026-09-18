@@ -1,4 +1,4 @@
-import { createBrowserRouter, Outlet, ScrollRestoration, useLocation } from "react-router";
+import { createBrowserRouter, Outlet, redirect, ScrollRestoration, useLocation } from "react-router";
 import { useTiltOnSelectors } from "./hooks/useTilt";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
@@ -127,14 +127,6 @@ export const router = createBrowserRouter([
                 lazy: () => import("./admin/pages/FundManagers").then((m) => ({ Component: m.FundManagers })),
               },
               {
-                path: "home-programs",
-                lazy: () => import("./admin/pages/HomePrograms").then((m) => ({ Component: m.HomePrograms })),
-              },
-              {
-                path: "sponsorship-packages",
-                lazy: () => import("./admin/pages/SponsorshipPackages").then((m) => ({ Component: m.SponsorshipPackages })),
-              },
-              {
                 path: "documents",
                 lazy: () => import("./admin/pages/Documents").then((m) => ({ Component: m.Documents })),
               },
@@ -147,9 +139,11 @@ export const router = createBrowserRouter([
                 lazy: () => import("./admin/pages/Submissions").then((m) => ({ Component: m.Submissions })),
               },
               {
-                path: "membership-signups",
-                lazy: () => import("./admin/pages/MembershipSignups").then((m) => ({ Component: m.MembershipSignups })),
+                path: "members",
+                lazy: () => import("./admin/pages/Members").then((m) => ({ Component: m.Members })),
               },
+              // Old address of the Members page, kept so bookmarks still work.
+              { path: "membership-signups", loader: () => redirect("/admin/members") },
               {
                 path: "page-backgrounds",
                 lazy: () => import("./admin/pages/PageBackgrounds").then((m) => ({ Component: m.PageBackgrounds })),

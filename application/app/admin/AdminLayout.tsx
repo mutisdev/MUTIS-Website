@@ -17,8 +17,6 @@ import {
   Mic2,
   TrendingUp,
   Settings,
-  LayoutGrid,
-  Layers,
   LogOut,
   Menu,
   X,
@@ -57,8 +55,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Past Speakers", icon: Mic2, path: "/admin/past-speakers" },
       { label: "Gallery", icon: Images, path: "/admin/gallery" },
       { label: "Recordings", icon: Video, path: "/admin/recordings" },
-      { label: "Home Programs", icon: LayoutGrid, path: "/admin/home-programs" },
-      { label: "Sponsorship Packages", icon: Layers, path: "/admin/sponsorship-packages" },
       { label: "Page Backgrounds", icon: Image, path: "/admin/page-backgrounds" },
     ],
   },
@@ -66,7 +62,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Submissions",
     items: [
       { label: "Submissions", icon: Inbox, path: "/admin/submissions" },
-      { label: "Membership Signups", icon: UserPlus, path: "/admin/membership-signups" },
+      { label: "Members", icon: UserPlus, path: "/admin/members" },
     ],
   },
   {

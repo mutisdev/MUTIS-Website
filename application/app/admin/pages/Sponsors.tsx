@@ -14,12 +14,19 @@ import { useIsMobile } from "../components/useIsMobile";
 import { usePageCache, hasCached, useDrawerFormCache } from "../usePageCache";
 
 type Sponsor = Database["public"]["Tables"]["sponsors"]["Row"];
-type Tier = "gold" | "silver" | "past";
-const TIERS: Tier[] = ["gold", "silver", "past"];
+
+// Sponsors are either current or past; the public Sponsors page shows the
+// two as separate sections, and each has its own display order.
+type Group = "current" | "past";
+const GROUPS: { key: Group; label: string }[] = [
+  { key: "current", label: "Current" },
+  { key: "past", label: "Past" },
+];
+const groupOf = (r: Pick<Sponsor, "is_past">): Group => (r.is_past ? "past" : "current");
 
 type FormState = {
   name: string;
-  tier: Tier;
+  group: Group;
   sector: string;
   logo_url: string;
   link_url: string;
@@ -29,7 +36,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   name: "",
-  tier: "gold",
+  group: "current",
   sector: "",
   logo_url: "",
   link_url: "",
@@ -43,7 +50,7 @@ export function Sponsors() {
 
   const [rows, setRows] = usePageCache<Sponsor[]>("admin:sponsors:rows", []);
   const [loading, setLoading] = useState(!hasCached("admin:sponsors:rows"));
-  const [tierFilter, setTierFilter] = usePageCache<"all" | Tier>("admin:sponsors:tierFilter", "all");
+  const [groupFilter, setGroupFilter] = usePageCache<"all" | Group>("admin:sponsors:groupFilter", "all");
   const [publishedFilter, setPublishedFilter] = usePageCache<"all" | "published" | "unpublished">("admin:sponsors:publishedFilter", "all");
   const [search, setSearch] = usePageCache("admin:sponsors:search", "");
 
@@ -66,24 +73,29 @@ export function Sponsors() {
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
-      if (tierFilter !== "all" && r.tier !== tierFilter) return false;
+      if (groupFilter !== "all" && groupOf(r) !== groupFilter) return false;
       if (publishedFilter === "published" && !r.is_published) return false;
       if (publishedFilter === "unpublished" && r.is_published) return false;
       if (search.trim() && !r.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
       return true;
     });
-  }, [rows, tierFilter, publishedFilter, search]);
+  }, [rows, groupFilter, publishedFilter, search]);
 
   const grouped = useMemo(() => {
-    const map = new Map<Tier, Sponsor[]>();
-    for (const tier of TIERS) {
+    const map = new Map<Group, Sponsor[]>();
+    for (const { key } of GROUPS) {
       map.set(
-        tier,
-        filtered.filter((r) => r.tier === tier).sort((a, b) => a.display_order - b.display_order)
+        key,
+        filtered.filter((r) => groupOf(r) === key).sort((a, b) => a.display_order - b.display_order)
       );
     }
     return map;
   }, [filtered]);
+
+  const nextOrderIn = (group: Group) => {
+    const groupRows = rows.filter((r) => groupOf(r) === group);
+    return groupRows.length ? Math.max(...groupRows.map((r) => r.display_order)) + 1 : 0;
+  };
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
@@ -93,7 +105,7 @@ export function Sponsors() {
   const openEdit = (row: Sponsor) => {
     setForm({
       name: row.name,
-      tier: row.tier as Tier,
+      group: groupOf(row),
       sector: row.sector ?? "",
       logo_url: row.logo_url ?? "",
       link_url: row.link_url ?? "",
@@ -110,7 +122,7 @@ export function Sponsors() {
     try {
       const values = {
         name: form.name.trim(),
-        tier: form.tier,
+        is_past: form.group === "past",
         sector: form.sector.trim() || null,
         logo_url: form.logo_url.trim() || null,
         link_url: form.link_url.trim() || null,
@@ -118,12 +130,17 @@ export function Sponsors() {
         is_published: form.is_published,
       };
       if (editing === "new") {
-        const tierRows = rows.filter((r) => r.tier === form.tier);
-        const nextOrder = tierRows.length ? Math.max(...tierRows.map((r) => r.display_order)) + 1 : 0;
-        await insertRow("sponsors", { ...values, display_order: nextOrder });
+        await insertRow("sponsors", { ...values, display_order: nextOrderIn(form.group) });
         toast.success("Sponsor added.");
       } else if (editing) {
-        await updateRow("sponsors", editing.id, values, editing);
+        // Moving between current and past puts the sponsor at the end of its new list.
+        const moved = groupOf(editing) !== form.group;
+        await updateRow(
+          "sponsors",
+          editing.id,
+          moved ? { ...values, display_order: nextOrderIn(form.group) } : values,
+          editing
+        );
         toast.success("Sponsor updated.");
       }
       setEditing(null);
@@ -131,7 +148,7 @@ export function Sponsors() {
     } catch (err: unknown) {
       const pgErr = err as { code?: string };
       if (pgErr.code === "23505") {
-        toast.error("A sponsor with this name already exists at this tier.");
+        toast.error("A sponsor with this name already exists.");
       } else {
         toast.error(err instanceof Error ? err.message : "Could not save that sponsor.");
       }
@@ -155,11 +172,11 @@ export function Sponsors() {
     }
   };
 
-  const onReorder = async (tier: Tier, orderedIds: string[]) => {
-    const tierRows = new Map(rows.filter((r) => r.tier === tier).map((r) => [r.id, r]));
+  const onReorder = async (group: Group, orderedIds: string[]) => {
+    const groupRows = new Map(rows.filter((r) => groupOf(r) === group).map((r) => [r.id, r]));
     const updates: { id: string; display_order: number; previous: Sponsor }[] = [];
     orderedIds.forEach((id, index) => {
-      const row = tierRows.get(id);
+      const row = groupRows.get(id);
       if (row && row.display_order !== index) {
         updates.push({ id, display_order: index, previous: row });
       }
@@ -199,7 +216,13 @@ export function Sponsors() {
       ),
     },
     { key: "name", label: "Name", render: (r) => r.name, sortValue: (r) => r.name },
-    { key: "tier", label: "Tier", render: (r) => r.tier, sortValue: (r) => r.tier },
+    {
+      key: "group",
+      label: "Current / past",
+      render: (r) => (r.is_past ? "Past" : "Current"),
+      sortValue: (r) => (r.is_past ? 1 : 0),
+      exportValue: (r) => (r.is_past ? "Past" : "Current"),
+    },
     { key: "sector", label: "Sector", render: (r) => r.sector ?? "—", exportValue: (r) => r.sector ?? "" },
     { key: "years_active", label: "Years", render: (r) => r.years_active ?? "—", exportValue: (r) => r.years_active ?? "" },
     {
@@ -279,14 +302,14 @@ export function Sponsors() {
           />
         </div>
         <select
-          value={tierFilter}
-          onChange={(e) => setTierFilter(e.target.value as "all" | Tier)}
+          value={groupFilter}
+          onChange={(e) => setGroupFilter(e.target.value as "all" | Group)}
           className="rounded-[10px] border border-input bg-input px-[12px] py-[10px] text-[13px]! text-foreground outline-hidden"
         >
-          <option value="all">All tiers</option>
-          {TIERS.map((t) => (
-            <option key={t} value={t}>
-              {t}
+          <option value="all">Current and past</option>
+          {GROUPS.map((g) => (
+            <option key={g.key} value={g.key}>
+              {g.label} only
             </option>
           ))}
         </select>
@@ -308,22 +331,22 @@ export function Sponsors() {
           </div>
         ) : isReordering ? (
           <div className="flex flex-col gap-[32px]">
-            {TIERS.filter((t) => tierFilter === "all" || tierFilter === t).map((tier) => {
-              const tierRows = grouped.get(tier) ?? [];
+            {GROUPS.filter((g) => groupFilter === "all" || groupFilter === g.key).map((group) => {
+              const groupRows = grouped.get(group.key) ?? [];
               return (
-                <div key={tier}>
+                <div key={group.key}>
                   <p className="mb-[8px] text-[10px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                    {tier} · {tierRows.length}
+                    {group.label} · {groupRows.length}
                   </p>
-                  {tierRows.length === 0 ? (
+                  {groupRows.length === 0 ? (
                     <div className="rounded-[14px] border border-border bg-card px-[16px] py-[20px] text-center text-[13px] text-muted-foreground">
-                      No {tier} sponsors.
+                      No {group.label.toLowerCase()} sponsors.
                     </div>
                   ) : (
                     <ReorderableList
-                      items={tierRows}
+                      items={groupRows}
                       keyField={(r) => r.id}
-                      onReorder={(ids) => onReorder(tier, ids)}
+                      onReorder={(ids) => onReorder(group.key, ids)}
                       renderRow={(r) => (
                         <div
                           onClick={() => openEdit(r)}
@@ -391,15 +414,15 @@ export function Sponsors() {
             />
           </Field>
 
-          <Field label="Tier" required>
+          <Field label="Current or past sponsor" required>
             <select
-              value={form.tier}
-              onChange={(e) => setForm({ ...form, tier: e.target.value as Tier })}
+              value={form.group}
+              onChange={(e) => setForm({ ...form, group: e.target.value as Group })}
               className="w-full rounded-[10px] border border-input bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden"
             >
-              {TIERS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {GROUPS.map((g) => (
+                <option key={g.key} value={g.key}>
+                  {g.label} sponsor
                 </option>
               ))}
             </select>

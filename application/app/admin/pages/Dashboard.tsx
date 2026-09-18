@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { useEffect } from "react";
 import type { ComponentType } from "react";
-import { Users, UserPlus, CalendarCheck, CalendarPlus, Eye, Loader2 } from "lucide-react";
+import { Users, UserPlus, UserX, CalendarCheck, CalendarPlus, Eye, Loader2 } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
@@ -21,9 +21,10 @@ type TrafficRange = "7d" | "30d" | "60d";
 interface RecentMember {
   id: string;
   full_name: string;
-  course: string;
-  year: string;
+  email: string;
   created_at: string;
+  events_signed_up: number;
+  events_attended: number;
 }
 
 interface RecentEventSignup {
@@ -91,11 +92,23 @@ export function Dashboard() {
       });
     supabase
       .from("membership_signups")
-      .select("id, full_name, course, year, created_at")
+      .select("id, full_name, email, created_at")
       .order("created_at", { ascending: false })
       .limit(8)
-      .then(({ data }) => {
-        if (!cancelled) setRecentMembers(data ?? []);
+      .then(async ({ data }) => {
+        const members = data ?? [];
+        const { data: counts } = members.length
+          ? await supabase.from("member_event_counts").select("*").in("member_id", members.map((m) => m.id))
+          : { data: [] };
+        if (cancelled) return;
+        const byId = new Map((counts ?? []).map((c) => [c.member_id, c]));
+        setRecentMembers(
+          members.map((m) => ({
+            ...m,
+            events_signed_up: byId.get(m.id)?.events_signed_up ?? 0,
+            events_attended: byId.get(m.id)?.events_attended ?? 0,
+          }))
+        );
       });
     supabase
       .from("event_signups")
@@ -151,6 +164,7 @@ export function Dashboard() {
     { label: "New members (7 days)", value: summary?.members_7d, icon: UserPlus },
     { label: "Event sign-ups", value: summary?.total_event_signups, icon: CalendarCheck },
     { label: "New event sign-ups (7 days)", value: summary?.event_signups_7d, icon: CalendarPlus },
+    { label: "Non-member sign-ups", value: summary?.non_member_event_signups, icon: UserX },
     { label: "Site visitors (7 days)", value: weekVisitors, icon: Eye },
   ];
 
@@ -170,7 +184,7 @@ export function Dashboard() {
       <h1 className="mt-[8px] text-[22px] font-medium text-foreground">Welcome, {session?.user.email}</h1>
       <p className="mt-[12px] text-[14px] leading-[1.6] text-muted-foreground">Sign-ups and site traffic at a glance.</p>
 
-      <div className="mt-[24px] grid grid-cols-2 gap-[12px] md:grid-cols-3 xl:grid-cols-5">
+      <div className="mt-[24px] grid grid-cols-2 gap-[12px] md:grid-cols-3 xl:grid-cols-6">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -250,16 +264,19 @@ export function Dashboard() {
       </div>
 
       <div className="mt-[12px] grid grid-cols-1 gap-[12px] lg:grid-cols-3">
-        <ChartCard title="Latest members" action={<ViewAll to="/admin/membership-signups" />}>
+        <ChartCard title="Latest members" action={<ViewAll to="/admin/members" />}>
           <ActivityList
             rows={recentMembers}
-            empty="No membership sign-ups yet."
+            empty="No members yet."
             render={(m) => (
               <>
-                <ActivityText primary={m.full_name} secondary={[m.course, m.year].filter(Boolean).join(" · ")} />
-                <time className="shrink-0 text-[11px] text-muted-foreground" dateTime={m.created_at}>
-                  {relativeTime(m.created_at)}
-                </time>
+                <ActivityText primary={m.full_name} secondary={m.email} />
+                <span className="flex shrink-0 flex-col items-end gap-[2px] text-[11px] text-muted-foreground">
+                  <time dateTime={m.created_at}>{relativeTime(m.created_at)}</time>
+                  <span title="Events signed up · events attended">
+                    {m.events_signed_up} signed up · {m.events_attended} attended
+                  </span>
+                </span>
               </>
             )}
           />

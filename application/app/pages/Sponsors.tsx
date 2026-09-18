@@ -147,11 +147,10 @@ export function Sponsors() {
     };
   }, []);
 
-  // Tiers are still stored per sponsor (and managed in the admin panel), but
-  // the public page shows every current partner in one flat grid, in
-  // display_order, with equal visual weight. "past" stays its own section.
-  const currentSponsors = sponsors.filter((row) => row.tier !== "past");
-  const pastSponsors = sponsors.filter((row) => row.tier === "past");
+  // Current partners in one flat grid, in display_order, with equal visual
+  // weight; past sponsors get their own section below.
+  const currentSponsors = sponsors.filter((row) => !row.is_past);
+  const pastSponsors = sponsors.filter((row) => row.is_past);
 
   useReveal([currentSponsors.length, pastSponsors.length, isLoading, loadError]);
   const bgImage = usePageBackgroundImage("sponsors");
@@ -174,7 +173,7 @@ export function Sponsors() {
       fail("Please fill in your company, name, email, and a message, and agree to the Privacy Policy.");
       return;
     }
-    const emailError = validateEmail(data.email, true, false);
+    const emailError = validateEmail(data.email, true);
     if (emailError) {
       fail(emailError);
       return;
@@ -213,7 +212,7 @@ export function Sponsors() {
         </div>
       </section>
 
-      {/* Current partners — one flat grid, no tiers */}
+      {/* Current partners — one flat grid */}
       <section className="page-section">
         <div className="inner">
           <div className="page-eyebrow r-up"><span className="bar" />Partners</div>

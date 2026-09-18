@@ -50,15 +50,6 @@ export const ETHNICITY_GROUPS: { group: string; options: { value: string; label:
 
 export const ETHNICITY_PREFER_NOT_TO_SAY = { value: "prefer_not_to_say", label: "Prefer not to say" };
 
-/** Ethnicity values whose selection reveals a free-text "please describe" field. */
-export const ETHNICITY_OTHER_VALUES = new Set([
-  "white_other",
-  "mixed_other",
-  "asian_other",
-  "black_other",
-  "other_ethnic_group",
-]);
-
 const YES_NO_NOT_SURE_PREFER: { value: string; label: string }[] = [
   { value: "yes", label: "Yes" },
   { value: "no", label: "No" },
@@ -78,20 +69,4 @@ export const SCHOOL_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "international", label: "International school" },
   { value: "other", label: "Other" },
   { value: "prefer_not_to_say", label: "Prefer not to say" },
-];
-
-/** Looks up a stored value's display label across every option list above,
- * for rendering in the admin view. Falls back to the raw value (or an
- * em dash) so an unrecognised/legacy value never disappears silently. */
-export function diversityLabel(
-  value: string | null | undefined,
-  options: { value: string; label: string }[]
-): string {
-  if (!value) return "—";
-  return options.find((o) => o.value === value)?.label ?? value;
-}
-
-export const ALL_ETHNICITY_OPTIONS: { value: string; label: string }[] = [
-  ...ETHNICITY_GROUPS.flatMap((g) => g.options),
-  ETHNICITY_PREFER_NOT_TO_SAY,
 ];

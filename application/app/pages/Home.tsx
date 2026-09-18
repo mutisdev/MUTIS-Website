@@ -453,7 +453,7 @@ function SponsorsStrip() {
       .from("sponsors")
       .select("*")
       .eq("is_published", true)
-      .neq("tier", "past")
+      .eq("is_past", false)
       .order("display_order")
       .then(({ data, error }) => {
         if (cancelled) return;

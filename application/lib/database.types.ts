@@ -194,42 +194,42 @@ export type Database = {
       attendance_submissions: {
         Row: {
           comments: string | null
-          course: string
+          course: string | null
           created_at: string
-          email: string
+          email: string | null
           event_id: string | null
           id: string
-          name: string
+          name: string | null
           other_event_name: string | null
           rating: number
           status: string
-          year: string
+          year: string | null
         }
         Insert: {
           comments?: string | null
-          course: string
+          course?: string | null
           created_at?: string
-          email: string
+          email?: string | null
           event_id?: string | null
           id?: string
-          name: string
+          name?: string | null
           other_event_name?: string | null
           rating: number
           status?: string
-          year: string
+          year?: string | null
         }
         Update: {
           comments?: string | null
-          course?: string
+          course?: string | null
           created_at?: string
-          email?: string
+          email?: string | null
           event_id?: string | null
           id?: string
-          name?: string
+          name?: string | null
           other_event_name?: string | null
           rating?: number
           status?: string
-          year?: string
+          year?: string | null
         }
         Relationships: [
           {
@@ -344,6 +344,24 @@ export type Database = {
           name?: string
           reason?: string
           status?: string
+        }
+        Relationships: []
+      }
+      diversity_answer_counts: {
+        Row: {
+          answer: string
+          count: number
+          question: string
+        }
+        Insert: {
+          answer: string
+          count?: number
+          question: string
+        }
+        Update: {
+          answer?: string
+          count?: number
+          question?: string
         }
         Relationships: []
       }
@@ -659,6 +677,42 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      member_event_attendance: {
+        Row: {
+          attended_on: string
+          email: string
+          event_id: string
+          id: string
+        }
+        Insert: {
+          attended_on?: string
+          email: string
+          event_id: string
+          id?: string
+        }
+        Update: {
+          attended_on?: string
+          email?: string
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_event_attendance_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "event_attendance_stats"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "member_event_attendance_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       membership_signup_diversity: {
         Row: {
@@ -1053,13 +1107,14 @@ export type Database = {
           created_at: string
           display_order: number
           id: string
+          is_past: boolean
           is_published: boolean
           link_url: string | null
           logo_url: string | null
           name: string
           role_label: string | null
           sector: string | null
-          tier: string
+          tier: string | null
           updated_at: string
           years_active: string | null
         }
@@ -1067,13 +1122,14 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          is_past?: boolean
           is_published?: boolean
           link_url?: string | null
           logo_url?: string | null
           name: string
           role_label?: string | null
           sector?: string | null
-          tier: string
+          tier?: string | null
           updated_at?: string
           years_active?: string | null
         }
@@ -1081,13 +1137,14 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          is_past?: boolean
           is_published?: boolean
           link_url?: string | null
           logo_url?: string | null
           name?: string
           role_label?: string | null
           sector?: string | null
-          tier?: string
+          tier?: string | null
           updated_at?: string
           years_active?: string | null
         }
@@ -1172,6 +1229,7 @@ export type Database = {
         Row: {
           event_signups_7d: number | null
           members_7d: number | null
+          non_member_event_signups: number | null
           total_event_signups: number | null
           total_members: number | null
         }
@@ -1182,9 +1240,18 @@ export type Database = {
           attendance_count: number | null
           capacity: number | null
           event_id: string | null
+          member_attendance_count: number | null
           signup_count: number | null
           starts_at: string | null
           title: string | null
+        }
+        Relationships: []
+      }
+      member_event_counts: {
+        Row: {
+          events_attended: number | null
+          events_signed_up: number | null
+          member_id: string | null
         }
         Relationships: []
       }
@@ -1220,6 +1287,16 @@ export type Database = {
           event_signups: number
           member_signups: number
         }[]
+      }
+      record_diversity_answers: {
+        Args: {
+          p_contextual_offer_eligible: string
+          p_ethnicity: string
+          p_first_generation_student: string
+          p_free_school_meals: string
+          p_school_type: string
+        }
+        Returns: undefined
       }
       site_traffic_top: {
         Args: { p_dimension: string; p_limit?: number }
