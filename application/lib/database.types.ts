@@ -194,42 +194,30 @@ export type Database = {
       attendance_submissions: {
         Row: {
           comments: string | null
-          course: string | null
           created_at: string
-          email: string | null
           event_id: string | null
           id: string
-          name: string | null
           other_event_name: string | null
           rating: number
           status: string
-          year: string | null
         }
         Insert: {
           comments?: string | null
-          course?: string | null
           created_at?: string
-          email?: string | null
           event_id?: string | null
           id?: string
-          name?: string | null
           other_event_name?: string | null
           rating: number
           status?: string
-          year?: string | null
         }
         Update: {
           comments?: string | null
-          course?: string | null
           created_at?: string
-          email?: string | null
           event_id?: string | null
           id?: string
-          name?: string | null
           other_event_name?: string | null
           rating?: number
           status?: string
-          year?: string | null
         }
         Relationships: [
           {
@@ -648,36 +636,6 @@ export type Database = {
         }
         Relationships: []
       }
-      home_programs: {
-        Row: {
-          created_at: string
-          description: string
-          display_order: number
-          id: string
-          is_published: boolean
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description: string
-          display_order?: number
-          id?: string
-          is_published?: boolean
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string
-          display_order?: number
-          id?: string
-          is_published?: boolean
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       member_event_attendance: {
         Row: {
           attended_on: string
@@ -714,47 +672,6 @@ export type Database = {
           },
         ]
       }
-      membership_signup_diversity: {
-        Row: {
-          contextual_offer_eligible: string | null
-          created_at: string
-          ethnicity: string | null
-          ethnicity_other_description: string | null
-          first_generation_student: string | null
-          free_school_meals: string | null
-          school_type: string | null
-          signup_id: string
-        }
-        Insert: {
-          contextual_offer_eligible?: string | null
-          created_at?: string
-          ethnicity?: string | null
-          ethnicity_other_description?: string | null
-          first_generation_student?: string | null
-          free_school_meals?: string | null
-          school_type?: string | null
-          signup_id: string
-        }
-        Update: {
-          contextual_offer_eligible?: string | null
-          created_at?: string
-          ethnicity?: string | null
-          ethnicity_other_description?: string | null
-          first_generation_student?: string | null
-          free_school_meals?: string | null
-          school_type?: string | null
-          signup_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "membership_signup_diversity_signup_id_fkey"
-            columns: ["signup_id"]
-            isOneToOne: true
-            referencedRelation: "membership_signups"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       membership_signups: {
         Row: {
           consent_share_partners: boolean
@@ -764,7 +681,6 @@ export type Database = {
           email: string
           full_name: string
           id: string
-          phone: string | null
           status: string
           year: string
         }
@@ -776,7 +692,6 @@ export type Database = {
           email: string
           full_name: string
           id?: string
-          phone?: string | null
           status?: string
           year: string
         }
@@ -788,7 +703,6 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
-          phone?: string | null
           status?: string
           year?: string
         }
@@ -1114,7 +1028,6 @@ export type Database = {
           name: string
           role_label: string | null
           sector: string | null
-          tier: string | null
           updated_at: string
           years_active: string | null
         }
@@ -1129,7 +1042,6 @@ export type Database = {
           name: string
           role_label?: string | null
           sector?: string | null
-          tier?: string | null
           updated_at?: string
           years_active?: string | null
         }
@@ -1144,7 +1056,6 @@ export type Database = {
           name?: string
           role_label?: string | null
           sector?: string | null
-          tier?: string | null
           updated_at?: string
           years_active?: string | null
         }
@@ -1177,39 +1088,6 @@ export type Database = {
           message?: string
           name?: string
           status?: string
-        }
-        Relationships: []
-      }
-      sponsorship_packages: {
-        Row: {
-          created_at: string
-          deliverables: string[]
-          display_order: number
-          headline: string
-          id: string
-          is_published: boolean
-          tier: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          deliverables?: string[]
-          display_order?: number
-          headline: string
-          id?: string
-          is_published?: boolean
-          tier: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          deliverables?: string[]
-          display_order?: number
-          headline?: string
-          id?: string
-          is_published?: boolean
-          tier?: string
-          updated_at?: string
         }
         Relationships: []
       }
