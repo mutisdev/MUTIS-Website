@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { verifyRecaptcha } from "../_shared/recaptcha.ts";
+import { isUniEmail, normaliseEmail, UNI_EMAIL_ERROR } from "../_shared/uniEmail.ts";
 
 // Single entry point for every public form on the site. The anon role no
 // longer has INSERT on the submission tables (or upload on
@@ -11,7 +12,6 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MANCHESTER_DOMAIN = "manchester.ac.uk";
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 
 const corsHeaders = {
@@ -43,16 +43,18 @@ function str(p: Payload, key: string, max: number, required = true): string | nu
   return value;
 }
 
-function email(p: Payload, key: string, requireManchester = false): string {
+function email(p: Payload, key: string): string {
   const value = str(p, key, 320)!;
   if (!EMAIL_RE.test(value)) throw new InvalidInput("Enter a valid email address.");
-  if (requireManchester) {
-    const domain = value.split("@")[1]?.toLowerCase() ?? "";
-    if (domain !== MANCHESTER_DOMAIN && !domain.endsWith(`.${MANCHESTER_DOMAIN}`)) {
-      throw new InvalidInput("Enter a University of Manchester email address.");
-    }
-  }
   return value;
+}
+
+/** A University of Manchester address, returned trimmed and lowercased — the
+ * form the database constraints require and members are matched on. */
+function uniEmail(p: Payload, key: string): string {
+  const value = email(p, key);
+  if (!isUniEmail(value)) throw new InvalidInput(UNI_EMAIL_ERROR);
+  return normaliseEmail(value);
 }
 
 function mustBeTrue(p: Payload, key: string) {
@@ -98,12 +100,15 @@ const handlers: Record<string, Handler> = {
     return await db.from("event_signups").insert({
       event_id: eventId,
       name: str(p, "name", 200),
-      email: email(p, "email"),
+      email: uniEmail(p, "email"),
     });
   },
 
+  // Anonymous event feedback. The feedback row never holds a name or email.
+  // If the visitor says they're a member, their attendance goes into
+  // member_event_attendance, a separate table with no link to the feedback
+  // (no shared id; both only keep the date).
   attendance: async (db, p) => {
-    mustBeTrue(p, "consent_privacy");
     const eventId = str(p, "event_id", 64, false);
     const otherEventName = str(p, "other_event_name", 200, false);
     if (!eventId === !otherEventName) throw new InvalidInput("Choose an event or name the event you attended.");
@@ -111,13 +116,23 @@ const handlers: Record<string, Handler> = {
     if (typeof rating !== "number" || !Number.isInteger(rating) || rating < 1 || rating > 5) {
       throw new InvalidInput("Rating must be between 1 and 5.");
     }
+    // Absent (e.g. an old cached copy of the form) counts as "No".
+    const isMember = p.is_member === true;
+
+    if (isMember && eventId) {
+      const { data: event } = await db.from("events").select("id").eq("id", eventId).maybeSingle();
+      if (!event) throw new InvalidInput("That event doesn't exist.");
+      // Recorded first and idempotent, so resubmitting after a failed
+      // feedback insert never double counts attendance.
+      const { error: attendanceError } = await db
+        .from("member_event_attendance")
+        .upsert({ event_id: eventId, email: uniEmail(p, "email") }, { onConflict: "event_id,email", ignoreDuplicates: true });
+      if (attendanceError) return { error: attendanceError };
+    }
+
     return await db.from("attendance_submissions").insert({
       event_id: eventId,
       other_event_name: otherEventName,
-      name: str(p, "name", 200),
-      email: email(p, "email", true),
-      course: str(p, "course", 200),
-      year: str(p, "year", 50),
       rating,
       comments: str(p, "comments", 5000, false),
     });
@@ -125,33 +140,32 @@ const handlers: Record<string, Handler> = {
 
   membership: async (db, p) => {
     mustBeTrue(p, "consent_privacy");
-    const signupId = crypto.randomUUID();
     const signup = {
-      id: signupId,
       full_name: str(p, "full_name", 200),
-      email: email(p, "email", true),
+      email: uniEmail(p, "email"),
       course: str(p, "course", 200),
       year: str(p, "year", 50),
       consent_share_partners: true,
       consent_share_partners_at: new Date().toISOString(),
     };
+    // Read (and validate) before inserting, so a bad payload never leaves a
+    // member without their answers counted.
     const diversity = {
-      signup_id: signupId,
-      ethnicity: str(p, "ethnicity", 200),
-      ethnicity_other_description: str(p, "ethnicity_other_description", 500, false),
-      contextual_offer_eligible: str(p, "contextual_offer_eligible", 100),
-      school_type: str(p, "school_type", 100),
-      first_generation_student: str(p, "first_generation_student", 100),
-      free_school_meals: str(p, "free_school_meals", 100),
+      p_ethnicity: str(p, "ethnicity", 200)!,
+      p_contextual_offer_eligible: str(p, "contextual_offer_eligible", 100)!,
+      p_school_type: str(p, "school_type", 100)!,
+      p_first_generation_student: str(p, "first_generation_student", 100)!,
+      p_free_school_meals: str(p, "free_school_meals", 100)!,
     };
 
     const result = await db.from("membership_signups").insert(signup);
     if (result.error) return result;
 
-    // Diversity data is supplementary — a failure here shouldn't undo an
+    // Diversity answers are only added to anonymous totals, never stored
+    // against the member. Supplementary: a failure here shouldn't undo an
     // already-successful signup, just gets logged for follow-up.
-    const { error: diversityError } = await db.from("membership_signup_diversity").insert(diversity);
-    if (diversityError) console.error("Failed to insert diversity data", diversityError);
+    const { error: diversityError } = await db.rpc("record_diversity_answers", diversity);
+    if (diversityError) console.error("Failed to record diversity totals", diversityError);
     return { error: null };
   },
 
@@ -225,7 +239,9 @@ Deno.serve(async (req: Request) => {
   if (photo && formName !== "alumni") return json({ code: "invalid", error: "Unexpected file" }, 400);
 
   try {
-    const remoteIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    // Feedback is anonymous, so don't pass the visitor's IP on to Google for it.
+    const remoteIp =
+      formName === "attendance" ? undefined : req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     const captcha = await verifyRecaptcha(token, remoteIp);
     if (!captcha.ok) {
       console.warn("reCAPTCHA rejected", formName, captcha.errorCodes);

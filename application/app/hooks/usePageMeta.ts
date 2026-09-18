@@ -116,11 +116,11 @@ export const ROUTE_META: Record<string, Meta> = {
     noindex: true,
     canonicalPath: "/network",
   },
-  // Unlisted, QR-code-only utility page for logging in-person attendance —
+  // Unlisted, QR-code-only utility page for anonymous event feedback —
   // no search intent to serve, so it's excluded from indexing and the sitemap.
   "/attendance": {
-    title: "Log Attendance | MUTIS Finance Society",
-    description: "Log your attendance at a MUTIS event.",
+    title: "Event Feedback | MUTIS Finance Society",
+    description: "Tell us how a MUTIS event went. Feedback is anonymous.",
     noindex: true,
   },
   // Utility form page, reached via the CTA on /network — no independent

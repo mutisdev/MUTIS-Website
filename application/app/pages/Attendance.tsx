@@ -1,11 +1,11 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
-import { PrivacyConsent } from "@/app/components/PrivacyConsent";
-import { EmailField, validateEmail } from "@/app/components/EmailField";
+import { UniEmailField, validateUniEmail } from "@/app/components/EmailField";
+import { normaliseEmail } from "@shared/uniEmail";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { Captcha } from "@/app/components/Captcha";
@@ -16,15 +16,30 @@ type EventRow = Tables<"events">;
 
 const OTHER_EVENT = "__other__";
 
+const RATINGS = [1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }));
+const MEMBER_CHOICES = [
+  { value: true, label: "Yes" },
+  { value: false, label: "No" },
+];
+
+/**
+ * Anonymous event feedback. Reached by QR code at events, so the URL stays
+ * /attendance. Feedback is stored with no name or email. If the visitor says
+ * they're a member, the submit-form function records their attendance in a
+ * separate table that has no link to this feedback.
+ */
 export function Attendance() {
   useReveal();
   const { settings } = useSiteSettings();
   const { status, error, submitting, fail, succeed, reset, onFormInput } = useFormStatus();
   const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
   const [rating, setRating] = useState<number | null>(null);
+  const [isMember, setIsMember] = useState<boolean | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState("");
+
+  const isOtherEvent = selectedEvent === OTHER_EVENT;
 
   useEffect(() => {
     let cancelled = false;
@@ -54,29 +69,31 @@ export function Attendance() {
     }
 
     const eventId = (form.elements.namedItem("event") as HTMLSelectElement).value;
-    const otherEventName = eventId === OTHER_EVENT
+    const otherEventName = isOtherEvent
       ? (form.elements.namedItem("other-event") as HTMLInputElement).value.trim()
       : "";
-    const name = (form.elements.namedItem("attendee-name") as HTMLInputElement).value.trim();
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
-    const course = (form.elements.namedItem("course") as HTMLInputElement).value.trim();
-    const year = (form.elements.namedItem("year") as HTMLSelectElement).value;
     const comments = (form.elements.namedItem("comments") as HTMLTextAreaElement).value.trim();
-    const consentPrivacy = (form.elements.namedItem("consent-privacy") as HTMLInputElement).checked;
+    // The member question is hidden for "Other" events: there's no event to credit.
+    const memberAnswer = isOtherEvent ? false : isMember;
+    const email = memberAnswer
+      ? (form.elements.namedItem("email") as HTMLInputElement).value.trim()
+      : "";
 
-    if (!eventId || (eventId === OTHER_EVENT && !otherEventName) || !name || !email || !course || !year || !rating || !consentPrivacy) {
+    if (!eventId || (isOtherEvent && !otherEventName) || memberAnswer === null || !rating) {
       fail(
-        eventId === OTHER_EVENT
-          ? "Please tell us which event you attended, fill in your name, email, course, and year of study, rate the event, and agree to the Privacy Policy."
-          : "Please select the event you attended, fill in your name, email, course, and year of study, rate the event, and agree to the Privacy Policy."
+        isOtherEvent
+          ? "Please tell us which event you attended and rate it."
+          : "Please choose the event you attended, tell us whether you're a MUTIS member, and rate the event."
       );
       return;
     }
 
-    const emailError = validateEmail(email, true, true);
-    if (emailError) {
-      fail(emailError);
-      return;
+    if (memberAnswer) {
+      const emailError = validateUniEmail(email);
+      if (emailError) {
+        fail(emailError);
+        return;
+      }
     }
 
     if (!captchaToken) {
@@ -87,24 +104,21 @@ export function Attendance() {
     submitting();
 
     const result = await submitForm("attendance", captchaToken, {
-      event_id: eventId === OTHER_EVENT ? null : eventId,
-      other_event_name: eventId === OTHER_EVENT ? otherEventName : null,
-      name,
-      email,
-      course,
-      year,
+      event_id: isOtherEvent ? null : eventId,
+      other_event_name: isOtherEvent ? otherEventName : null,
+      is_member: memberAnswer,
+      email: memberAnswer ? normaliseEmail(email) : null,
       rating,
       comments: comments || null,
-      consent_privacy: consentPrivacy,
     });
     resetCaptcha();
 
     if (!result.ok) {
       fail(
-        result.code === "duplicate"
-          ? "You've already logged your attendance for this event with that email."
-          : result.code === "captcha_failed"
-            ? CAPTCHA_FAILED_MESSAGE
+        result.code === "captcha_failed"
+          ? CAPTCHA_FAILED_MESSAGE
+          : result.code === "invalid" && result.message
+            ? result.message
             : `Something went wrong. Please try again or email us at ${settings.contact_email}.`
       );
       return;
@@ -113,6 +127,7 @@ export function Attendance() {
     succeed();
     form.reset();
     setRating(null);
+    setIsMember(null);
     setSelectedEvent("");
   };
 
@@ -122,13 +137,13 @@ export function Attendance() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb">
-              <Link to="/">MUTIS</Link><span>/</span><Link to="/events">Events</Link><span>/</span><span>Attendance</span>
+              <Link to="/">MUTIS</Link><span>/</span><Link to="/events">Events</Link><span>/</span><span>Feedback</span>
             </div>
             <div className="page-eyebrow r-up"><span className="bar" />Events</div>
-            <h1 className="page-title r-up"><span className="accent">Attendance</span></h1>
+            <h1 className="page-title r-up">Event<br /><span className="accent">Feedback</span></h1>
           </div>
           <p className="page-sub r-up">
-            Attended a MUTIS event? Register your attendance below and share your feedback.
+            Been to a MUTIS event? Tell us how it went. It takes under a minute.
           </p>
         </div>
       </section>
@@ -137,17 +152,18 @@ export function Attendance() {
         <div className="inner">
           <div className="contact-grid">
             <div>
-              <div className="page-eyebrow r-up"><span className="bar" />Attendance Form</div>
-              <h2 className="r-up">Sign in</h2>
+              <div className="page-eyebrow r-up"><span className="bar" />Feedback form</div>
+              <h2 className="r-up">How was it?</h2>
               <p className="lede r-up">
-                Fill in your details and let us know how the event went. All fields marked * are required.
+                Your feedback is anonymous. If you tell us you're a member, we record that you attended
+                separately from your feedback.
               </p>
 
               {status === "sent" ? (
                 <div style={{ marginTop: 32 }}>
                   <FormFeedback
                     status={status}
-                    successMessage="Thanks for logging your attendance — your response has been recorded."
+                    successMessage="Thanks for your feedback — it's been recorded."
                     style={{ fontSize: 16 }}
                   />
                   <button
@@ -155,13 +171,13 @@ export function Attendance() {
                     style={{ marginTop: 24, textDecoration: "none" }}
                     onClick={reset}
                   >
-                    Submit another response
+                    Give feedback on another event
                   </button>
                 </div>
               ) : (
                 <form
                   className="contact-form r-up"
-                  name="attendance"
+                  name="event-feedback"
                   onSubmit={onSubmit}
                   onInput={onFormInput}
                   noValidate
@@ -194,7 +210,7 @@ export function Attendance() {
                     </select>
                   </div>
 
-                  {selectedEvent === OTHER_EVENT && (
+                  {isOtherEvent && (
                     <div className="field">
                       <label htmlFor="att-other-event">Event name *</label>
                       <input
@@ -207,88 +223,37 @@ export function Attendance() {
                     </div>
                   )}
 
-                  <div className="field">
-                    <label htmlFor="att-name">Full name *</label>
-                    <input
-                      id="att-name"
-                      name="attendee-name"
-                      type="text"
-                      placeholder="First and last name"
-                      autoComplete="name"
-                      required
+                  {!isOtherEvent && (
+                    <ChoiceGroup
+                      id="att-member"
+                      label="Are you a MUTIS member? *"
+                      options={MEMBER_CHOICES}
+                      value={isMember}
+                      onChange={setIsMember}
                     />
-                  </div>
+                  )}
 
-                  <EmailField
-                    id="att-email"
-                    label="University email *"
-                    placeholder="you@student.manchester.ac.uk"
-                    requireManchesterDomain
+                  {!isOtherEvent && isMember && (
+                    <UniEmailField
+                      id="att-email"
+                      label="Your university email *"
+                      placeholder="The email you signed up to MUTIS with"
+                    />
+                  )}
+
+                  <ChoiceGroup
+                    id="att-rating"
+                    label="How would you rate the event? *"
+                    options={RATINGS}
+                    value={rating}
+                    onChange={setRating}
+                    footer={
+                      <div className="choice-scale-ends" aria-hidden="true">
+                        <span>1 — Poor</span>
+                        <span>5 — Excellent</span>
+                      </div>
+                    }
                   />
-
-                  <div className="field">
-                    <label htmlFor="att-course">Course *</label>
-                    <input
-                      id="att-course"
-                      name="course"
-                      type="text"
-                      placeholder="e.g. BSc Finance"
-                      required
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label htmlFor="att-year">Year of study *</label>
-                    <select id="att-year" name="year" defaultValue="" required>
-                      <option value="" disabled>Select year…</option>
-                      <option value="1st Year">1st Year</option>
-                      <option value="2nd Year">2nd Year</option>
-                      <option value="3rd Year">3rd Year</option>
-                      <option value="4th Year">4th Year</option>
-                      <option value="Masters">Masters</option>
-                      <option value="PhD">PhD</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-
-                  <div className="field">
-                    <label htmlFor="att-rating-1">How would you rate the event? *</label>
-                    <div
-                      role="radiogroup"
-                      aria-labelledby="att-rating-1"
-                      style={{ display: "flex", gap: 8 }}
-                    >
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <button
-                          key={n}
-                          id={n === 1 ? "att-rating-1" : undefined}
-                          type="button"
-                          role="radio"
-                          aria-checked={rating === n}
-                          onClick={() => setRating(n)}
-                          style={{
-                            flex: 1,
-                            padding: "12px 0",
-                            fontSize: 16,
-                            fontWeight: 600,
-                            fontVariantNumeric: "tabular-nums",
-                            borderRadius: 8,
-                            border: rating === n ? "1px solid var(--pm-accent)" : "1px solid var(--hair)",
-                            background: rating === n ? "var(--pm-accent)" : "transparent",
-                            color: rating === n ? "var(--base)" : "var(--ink)",
-                            cursor: "pointer",
-                            transition: "background 0.15s, border-color 0.15s, color 0.15s",
-                          }}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--ink-soft)", letterSpacing: "0.08em", marginTop: 4 }}>
-                      <span>1 — Poor</span>
-                      <span>5 — Excellent</span>
-                    </div>
-                  </div>
 
                   <div className="field">
                     <label htmlFor="att-comments">Any comments? (optional)</label>
@@ -296,10 +261,12 @@ export function Attendance() {
                       id="att-comments"
                       name="comments"
                       placeholder="What did you enjoy? What could be improved?"
+                      aria-describedby="att-comments-hint"
                     />
+                    <span id="att-comments-hint" className="field-hint">
+                      Please don't include your name or contact details.
+                    </span>
                   </div>
-
-                  <PrivacyConsent id="att-consent-privacy" />
 
                   <Captcha {...captchaProps} />
 
@@ -312,7 +279,7 @@ export function Attendance() {
                     aria-busy={status === "submitting"}
                     style={{ alignSelf: "flex-start", marginTop: 8 }}
                   >
-                    {status === "submitting" ? "Submitting…" : "Log Attendance"}
+                    {status === "submitting" ? "Sending…" : "Send feedback"}
                     <span className="arrow" />
                   </button>
                 </form>
@@ -327,18 +294,16 @@ export function Attendance() {
                 </div>
               </div>
               <div className="row">
+                <div className="l">Privacy</div>
+                <div className="v">
+                  <Link to="/privacy" style={{ color: "var(--pm-accent)" }}>How we handle feedback →</Link>
+                </div>
+              </div>
+              <div className="row">
                 <div className="l">Questions</div>
                 <div className="v">
                   <a href={`mailto:${settings.contact_email}`}>
                     {settings.contact_email}
-                  </a>
-                </div>
-              </div>
-              <div className="row">
-                <div className="l">Instagram</div>
-                <div className="v">
-                  <a href={settings.instagram_url} target="_blank" rel="noreferrer">
-                    @mutisfinancesoc
                   </a>
                 </div>
               </div>
@@ -347,5 +312,69 @@ export function Attendance() {
         </div>
       </section>
     </>
+  );
+}
+
+/**
+ * A row of equal-width square buttons that behaves as a radio group:
+ * one tab stop, arrow keys move the selection (WAI-ARIA radio pattern).
+ */
+function ChoiceGroup<T extends string | number | boolean>({
+  id,
+  label,
+  options,
+  value,
+  onChange,
+  footer,
+}: {
+  id: string;
+  label: string;
+  options: { value: T; label: string }[];
+  value: T | null;
+  onChange: (value: T) => void;
+  footer?: React.ReactNode;
+}) {
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  const labelId = `${id}-label`;
+  const selectedIndex = options.findIndex((o) => o.value === value);
+  const focusIndex = selectedIndex === -1 ? 0 : selectedIndex;
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const next = (focusIndex + step + options.length) % options.length;
+    onChange(options[next].value);
+    buttons.current[next]?.focus();
+  };
+
+  return (
+    <div className="field">
+      <span id={labelId} className="choice-scale-label">{label}</span>
+      <div
+        role="radiogroup"
+        aria-labelledby={labelId}
+        className="choice-scale"
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(44px, 1fr))` }}
+        onKeyDown={onKeyDown}
+      >
+        {options.map((o, i) => (
+          <button
+            key={String(o.value)}
+            ref={(el) => {
+              buttons.current[i] = el;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={value === o.value}
+            tabIndex={i === focusIndex ? 0 : -1}
+            onClick={() => onChange(o.value)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {footer}
+    </div>
   );
 }

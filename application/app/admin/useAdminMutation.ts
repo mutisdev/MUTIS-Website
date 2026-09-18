@@ -16,8 +16,6 @@ export type ContentTable =
   | "recordings"
   | "past_speakers"
   | "fund_managers"
-  | "home_programs"
-  | "sponsorship_packages"
   | "documents"
   | "network_logos";
 

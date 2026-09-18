@@ -20,7 +20,7 @@ const STATIC_LABELS: Record<string, string> = {
   "/network": "Our network",
   "/privacy": "Privacy",
   "/past-speakers": "Past speakers",
-  "/attendance": "Attendance",
+  "/attendance": "Event feedback",
   "/media": "Media",
   "/gallery": "Gallery",
   "/recordings": "Recordings",

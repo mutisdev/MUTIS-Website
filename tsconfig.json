@@ -12,8 +12,9 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["application/*"]
+      "@/*": ["application/*"],
+      "@shared/*": ["supabase/functions/_shared/*"]
     }
   },
-  "include": ["application", "vite.config.ts"]
+  "include": ["application", "vite.config.ts", "supabase/functions/_shared/uniEmail.ts"]
 }

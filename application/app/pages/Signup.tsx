@@ -5,11 +5,11 @@ import { useReveal } from "@/app/hooks/useReveal";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
-import { EmailField, validateEmail } from "@/app/components/EmailField";
+import { UniEmailField, validateUniEmail } from "@/app/components/EmailField";
+import { normaliseEmail } from "@shared/uniEmail";
 import {
   ETHNICITY_GROUPS,
   ETHNICITY_PREFER_NOT_TO_SAY,
-  ETHNICITY_OTHER_VALUES,
   CONTEXTUAL_OFFER_OPTIONS,
   SCHOOL_TYPE_OPTIONS,
   FIRST_GENERATION_OPTIONS,
@@ -25,7 +25,6 @@ export function Signup() {
   useReveal();
   const { status, error, submitting, fail, succeed, onFormInput } = useFormStatus();
   const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
-  const [ethnicity, setEthnicity] = useState("");
 
   // See AlumniRegister.tsx for why this is a floating toast rather than an
   // inline banner: the confirmation should be visible even if the visitor
@@ -80,7 +79,7 @@ export function Signup() {
     const year = (form.elements.namedItem("year") as HTMLSelectElement).value;
     const consentPrivacy = (form.elements.namedItem("consent-privacy") as HTMLInputElement).checked;
 
-    const ethnicityOther = (form.elements.namedItem("ethnicity-other") as HTMLInputElement | null)?.value.trim() ?? "";
+    const ethnicity = (form.elements.namedItem("ethnicity") as HTMLSelectElement).value;
     const contextualOffer = (form.elements.namedItem("contextual-offer") as HTMLSelectElement).value;
     const schoolType = (form.elements.namedItem("school-type") as HTMLSelectElement).value;
     const firstGeneration = (form.elements.namedItem("first-generation") as HTMLSelectElement).value;
@@ -92,7 +91,6 @@ export function Signup() {
       !course ||
       !year ||
       !ethnicity ||
-      (ETHNICITY_OTHER_VALUES.has(ethnicity) && !ethnicityOther) ||
       !contextualOffer ||
       !schoolType ||
       !firstGeneration ||
@@ -103,7 +101,7 @@ export function Signup() {
       return;
     }
 
-    const emailError = validateEmail(email, true, true);
+    const emailError = validateUniEmail(email);
     if (emailError) {
       fail(emailError);
       return;
@@ -118,12 +116,11 @@ export function Signup() {
 
     const result = await submitForm("membership", captchaToken, {
       full_name: fullName,
-      email,
+      email: normaliseEmail(email),
       course,
       year,
       consent_privacy: consentPrivacy,
       ethnicity,
-      ethnicity_other_description: ETHNICITY_OTHER_VALUES.has(ethnicity) ? ethnicityOther : null,
       contextual_offer_eligible: contextualOffer,
       school_type: schoolType,
       first_generation_student: firstGeneration,
@@ -144,7 +141,6 @@ export function Signup() {
 
     succeed();
     form.reset();
-    setEthnicity("");
   };
 
   return (
@@ -199,12 +195,7 @@ export function Signup() {
                 />
               </div>
 
-              <EmailField
-                id="su-email"
-                label="University email *"
-                placeholder="you@student.manchester.ac.uk"
-                requireManchesterDomain
-              />
+              <UniEmailField id="su-email" />
 
               <div className="field">
                 <label htmlFor="su-course">Course *</label>
@@ -236,18 +227,13 @@ export function Signup() {
               </div>
               <p className="lede r-up" style={{ fontSize: 13, marginTop: 4 }}>
                 This data helps us understand our members better, so we can run more representative and
-                inclusive events and initiatives.
+                inclusive events and initiatives. Your answers are only added to anonymous totals. They are
+                not stored against your name and are not shared with partner firms individually.
               </p>
 
               <div className="field">
                 <label htmlFor="su-ethnicity">Ethnic background *</label>
-                <select
-                  id="su-ethnicity"
-                  name="ethnicity"
-                  value={ethnicity}
-                  onChange={(e) => setEthnicity(e.target.value)}
-                  required
-                >
+                <select id="su-ethnicity" name="ethnicity" defaultValue="" required>
                   <option value="" disabled>Select…</option>
                   {ETHNICITY_GROUPS.map((g) => (
                     <optgroup key={g.group} label={g.group}>
@@ -259,19 +245,6 @@ export function Signup() {
                   <option value={ETHNICITY_PREFER_NOT_TO_SAY.value}>{ETHNICITY_PREFER_NOT_TO_SAY.label}</option>
                 </select>
               </div>
-
-              {ETHNICITY_OTHER_VALUES.has(ethnicity) && (
-                <div className="field">
-                  <label htmlFor="su-ethnicity-other">Please describe *</label>
-                  <input
-                    id="su-ethnicity-other"
-                    name="ethnicity-other"
-                    type="text"
-                    placeholder="Please describe your ethnic background"
-                    required
-                  />
-                </div>
-              )}
 
               <div className="field">
                 <label htmlFor="su-contextual-offer">Eligible for a contextual offer at Manchester? *</label>

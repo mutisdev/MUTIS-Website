@@ -32,17 +32,52 @@ export function Privacy() {
 
             <h2>What we collect</h2>
             <p>
-              MUTIS collects information you submit directly through forms on this site — for example the contact
-              form, sponsorship enquiries, event sign-ups, event attendance/feedback, and the alumni directory
+              MUTIS collects information you submit directly through forms on this site — the membership sign-up,
+              event sign-ups, event feedback, the contact form, sponsorship enquiries, and the alumni directory
               registration. Each form only asks for what it needs to do its job (e.g. the alumni form asks for your
               career details so we can feature you in the network directory).
             </p>
 
             <h2>Why we collect it</h2>
             <p>
-              We use this information to run the society: to respond to enquiries, manage event registrations, keep
-              a record of attendance, evaluate sponsorship proposals, and — where you've explicitly agreed — to
-              publish your details in the alumni network directory on this website and on MUTIS social media.
+              We use this information to run the society: to keep a list of members, manage event registrations,
+              see which members come to our events, respond to enquiries, evaluate sponsorship proposals, and —
+              where you've explicitly agreed — to publish your details in the alumni network directory on this
+              website and on MUTIS social media.
+            </p>
+
+            <h2>Membership sign-up</h2>
+            <p>
+              We store your name, University of Manchester email, course and year of study, and whether you agreed
+              to your details being shared with partner firms. This is your membership record; you can ask us to
+              correct or delete it at any time.
+            </p>
+
+            <h2>Diversity questions</h2>
+            <p>
+              The diversity and widening-participation questions on the membership form are added straight to
+              anonymous totals (for example, "12 members said yes"). Your individual answers are not stored against
+              your name, your email or your membership record, so they can't be traced back to you. Because they
+              aren't linked to you, the totals stay the same if your membership record is later deleted. We only ever
+              share these totals, never individual answers.
+            </p>
+
+            <h2>Event sign-ups</h2>
+            <p>
+              Signing up for an event needs your name and University of Manchester email. We match sign-ups to
+              membership records by email, so we can see how many events each member has signed up for — including
+              events you signed up for before becoming a member. We also count how many sign-ups come from people
+              who aren't members yet, as a single number.
+            </p>
+
+            <h2>Event feedback</h2>
+            <p>
+              Event feedback is anonymous. We store which event it's about, your rating and any comments — no name,
+              no email, and only the date it was sent, not the time. If you tell us you're a MUTIS member and give
+              your university email, we record that you attended that event in a separate list that is not linked to
+              your feedback, so we can't tell which rating or comment was yours. At a small event where very few
+              people leave feedback, it may still be possible to guess who wrote something, so please don't include
+              your name or contact details in comments.
             </p>
 
             <h2>Publishing your details</h2>
@@ -68,7 +103,12 @@ export function Privacy() {
             </p>
 
             <h2>Cookies and tracking</h2>
-            <p>This site does not use advertising or tracking cookies.</p>
+            <p>
+              This site does not use advertising cookies. To stop spam, our forms use Google reCAPTCHA, which sets
+              its own cookies and sends information such as your IP address and browser details to Google to check
+              that you're a person. For event feedback we don't pass your IP address to Google ourselves. We also
+              use Vercel Web Analytics to count page visits; it doesn't use cookies or identify you.
+            </p>
           </div>
         </div>
       </section>

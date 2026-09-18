@@ -15,13 +15,23 @@ type Contact = Database["public"]["Tables"]["contact_submissions"]["Row"];
 type Sponsorship = Database["public"]["Tables"]["sponsorship_enquiries"]["Row"];
 type Signup = Database["public"]["Tables"]["event_signups"]["Row"];
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
-type Attendance = Database["public"]["Tables"]["attendance_submissions"]["Row"];
+// Anonymous event feedback: only these columns are ever read.
+const ATTENDANCE_COLUMNS = "id, event_id, other_event_name, rating, comments, status, created_at";
+type Attendance = Pick<
+  Database["public"]["Tables"]["attendance_submissions"]["Row"],
+  "id" | "event_id" | "other_event_name" | "rating" | "comments" | "status" | "created_at"
+>;
 type AlumniSubmission = Database["public"]["Tables"]["alumni_submissions"]["Row"];
 
 type Tab = "contact" | "sponsorship" | "signups" | "attendance" | "alumni";
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+// Feedback only keeps the day it was sent, so no time is shown.
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 function truncate(s: string, n: number) {
@@ -32,7 +42,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "contact", label: "Contact" },
   { key: "sponsorship", label: "Sponsorship" },
   { key: "signups", label: "Event signups" },
-  { key: "attendance", label: "Attendance" },
+  { key: "attendance", label: "Feedback" },
   { key: "alumni", label: "Alumni" },
 ];
 
@@ -66,7 +76,7 @@ export function Submissions() {
       supabase.from("sponsorship_enquiries").select("*"),
       supabase.from("event_signups").select("*"),
       supabase.from("events").select("*"),
-      supabase.from("attendance_submissions").select("*"),
+      supabase.from("attendance_submissions").select(ATTENDANCE_COLUMNS),
       supabase.from("alumni_submissions").select("*"),
     ]);
     if (c.error || s.error || sg.error || ev.error || a.error || al.error) toast.error("Could not load submissions.");
@@ -159,10 +169,11 @@ export function Submissions() {
       .filter((r) => {
         if (!search.trim()) return true;
         const q = search.trim().toLowerCase();
-        return r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || r.course.toLowerCase().includes(q);
+        return attendanceEventLabel(r).toLowerCase().includes(q) || (r.comments ?? "").toLowerCase().includes(q);
       })
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
-  }, [attendances, statusFilter, eventFilter, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attendances, statusFilter, eventFilter, search, events]);
 
   const filteredAlumniSubs = useMemo(() => {
     return alumniSubs
@@ -332,14 +343,11 @@ export function Submissions() {
   ];
 
   const attendanceColumns: DataTableColumn<Attendance>[] = [
-    { key: "created_at", label: "Received", render: (r) => formatDateTime(r.created_at), sortValue: (r) => r.created_at },
+    { key: "created_at", label: "Received", render: (r) => formatDate(r.created_at), sortValue: (r) => r.created_at.slice(0, 10) },
     { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} />, exportValue: (r) => r.status },
     { key: "event", label: "Event", render: (r) => attendanceEventLabel(r), exportValue: (r) => attendanceEventLabel(r) },
-    { key: "name", label: "Name", render: (r) => r.name, exportValue: (r) => r.name },
-    { key: "email", label: "Email", render: (r) => r.email, exportValue: (r) => r.email },
-    { key: "course", label: "Course", render: (r) => r.course, exportValue: (r) => r.course },
-    { key: "year", label: "Year", render: (r) => r.year, exportValue: (r) => r.year },
     { key: "rating", label: "Rating", render: (r) => `${r.rating} / 5`, sortValue: (r) => r.rating },
+    { key: "comments", label: "Comments", render: (r) => (r.comments ? truncate(r.comments, 60) : "—"), exportValue: (r) => r.comments ?? "" },
     {
       key: "actions",
       label: "",
@@ -392,7 +400,7 @@ export function Submissions() {
         </div>
         <div className="relative">
           <Search className="pointer-events-none absolute left-[12px] top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Search name, email, message…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-[240px] rounded-[10px] border border-input bg-input py-[10px] pl-[36px] pr-[12px] text-[14px]! text-foreground outline-hidden transition-colors focus:border-accent" />
+          <input type="text" placeholder={tab === "attendance" ? "Search event or comments…" : "Search name, email, message…"} value={search} onChange={(e) => setSearch(e.target.value)} className="w-[240px] rounded-[10px] border border-input bg-input py-[10px] pl-[36px] pr-[12px] text-[14px]! text-foreground outline-hidden transition-colors focus:border-accent" />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-[10px] border border-input bg-input px-[12px] py-[10px] text-[13px]! text-foreground outline-hidden">
           <option value="all">All statuses</option>
@@ -423,7 +431,7 @@ export function Submissions() {
         ) : tab === "signups" ? (
           <DataTable columns={signupColumns} data={filteredSignups} keyField={(r) => r.id} onRowClick={(r) => setDetail({ tab: "signups", row: r })} emptyMessage="No event signups." exportFilename="event-signups.csv" />
         ) : tab === "attendance" ? (
-          <DataTable columns={attendanceColumns} data={filteredAttendances} keyField={(r) => r.id} onRowClick={(r) => setDetail({ tab: "attendance", row: r })} emptyMessage="No attendance submissions." exportFilename="attendance-submissions.csv" />
+          <DataTable columns={attendanceColumns} data={filteredAttendances} keyField={(r) => r.id} onRowClick={(r) => setDetail({ tab: "attendance", row: r })} emptyMessage="No feedback yet." exportFilename="event-feedback.csv" />
         ) : (
           <DataTable columns={alumniColumns} data={filteredAlumniSubs} keyField={(r) => r.id} onRowClick={(r) => openDetail("alumni", r)} emptyMessage="No alumni submissions." exportFilename="alumni-submissions.csv" />
         )}
@@ -435,7 +443,7 @@ export function Submissions() {
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-[6px] text-[12px] text-muted-foreground">
                 <InboxIcon className="h-[13px] w-[13px]" />
-                {formatDateTime(detail.row.created_at)}
+                {detail.tab === "attendance" ? formatDate(detail.row.created_at) : formatDateTime(detail.row.created_at)}
               </span>
               <select
                 value={detail.row.status}
@@ -465,8 +473,6 @@ export function Submissions() {
             {detail.tab !== "alumni" && "name" in detail.row && <DetailRow label="Name" value={detail.row.name} />}
             {detail.tab !== "alumni" && "email" in detail.row && <DetailRow label="Email" value={detail.row.email} />}
             {detail.tab === "contact" && "reason" in detail.row && <DetailRow label="Reason" value={detail.row.reason} />}
-            {detail.tab === "attendance" && "course" in detail.row && <DetailRow label="Course" value={detail.row.course} />}
-            {detail.tab === "attendance" && "year" in detail.row && <DetailRow label="Year of study" value={detail.row.year} />}
             {detail.tab === "attendance" && "rating" in detail.row && <DetailRow label="Rating" value={`${detail.row.rating} / 5`} />}
             {"message" in detail.row && <DetailRow label="Message" value={detail.row.message} multiline />}
             {"comments" in detail.row && detail.row.comments && <DetailRow label="Comments" value={detail.row.comments} multiline />}

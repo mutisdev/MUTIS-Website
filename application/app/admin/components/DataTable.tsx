@@ -20,6 +20,11 @@ interface DataTableProps<T> {
   /** When set, shows an "Export CSV" button above the table that downloads
    * the currently displayed rows to this filename. */
   exportFilename?: string;
+  /** When set, only columns whose key is in this set are shown — in the
+   * table, the mobile cards and the CSV export alike. */
+  visibleKeys?: ReadonlySet<string>;
+  /** Extra controls rendered next to the Export CSV button (e.g. a column picker). */
+  toolbar?: ReactNode;
 }
 
 type SortState = { key: string; direction: "asc" | "desc" } | null;
@@ -31,11 +36,16 @@ function csvCell(value: string | number): string {
 
 function exportRowsToCsv<T>(columns: DataTableColumn<T>[], rows: T[], filename: string) {
   const exportCols = columns.filter((c) => c.exportValue || c.sortValue);
-  const header = exportCols.map((c) => csvCell(c.label)).join(",");
-  const lines = rows.map((row) =>
-    exportCols.map((c) => csvCell((c.exportValue ?? c.sortValue!)(row))).join(",")
+  downloadCsv(
+    filename,
+    exportCols.map((c) => c.label),
+    rows.map((row) => exportCols.map((c) => (c.exportValue ?? c.sortValue!)(row)))
   );
-  const csv = [header, ...lines].join("\r\n");
+}
+
+/** Downloads a CSV built from a header row and data rows. */
+export function downloadCsv(filename: string, header: string[], rows: (string | number)[][]) {
+  const csv = [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -45,8 +55,18 @@ function exportRowsToCsv<T>(columns: DataTableColumn<T>[], rows: T[], filename: 
   URL.revokeObjectURL(url);
 }
 
-export function DataTable<T>({ columns, data, keyField, onRowClick, emptyMessage = "Nothing here yet.", exportFilename }: DataTableProps<T>) {
+export function DataTable<T>({
+  columns: allColumns,
+  data,
+  keyField,
+  onRowClick,
+  emptyMessage = "Nothing here yet.",
+  exportFilename,
+  visibleKeys,
+  toolbar,
+}: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState>(null);
+  const columns = visibleKeys ? allColumns.filter((c) => visibleKeys.has(c.key)) : allColumns;
 
   const sorted = (() => {
     if (!sort) return data;
@@ -81,16 +101,19 @@ export function DataTable<T>({ columns, data, keyField, onRowClick, emptyMessage
 
   return (
     <>
-      {exportFilename && (
-        <div className="mb-[12px] flex justify-end">
-          <button
-            type="button"
-            onClick={() => exportRowsToCsv(columns, sorted, exportFilename)}
-            className="inline-flex items-center gap-[6px] rounded-[10px] border border-border bg-card px-[12px] py-[8px] text-[12px] font-medium text-foreground transition-colors hover:bg-white/[0.03]"
-          >
-            <Download className="h-[14px] w-[14px]" />
-            Export CSV
-          </button>
+      {(exportFilename || toolbar) && (
+        <div className="mb-[12px] flex flex-wrap justify-end gap-[8px]">
+          {toolbar}
+          {exportFilename && (
+            <button
+              type="button"
+              onClick={() => exportRowsToCsv(columns, sorted, exportFilename)}
+              className="inline-flex items-center gap-[6px] rounded-[10px] border border-border bg-card px-[12px] py-[8px] text-[12px] font-medium text-foreground transition-colors hover:bg-white/[0.03]"
+            >
+              <Download className="h-[14px] w-[14px]" />
+              Export CSV
+            </button>
+          )}
         </div>
       )}
       {/* Desktop / tablet table */}

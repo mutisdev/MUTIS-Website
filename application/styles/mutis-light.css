@@ -119,9 +119,6 @@
 .subpage-light .numlist-item .d { color: var(--ink-soft); }
 .subpage-light .numlist-item .arrow { border-color: var(--hair); }
 
-/* ---------- Tier heads ---------- */
-.subpage-light .tier-head { color: var(--ink-text); }
-
 /* ---------- Sponsor grid ---------- */
 .subpage-light .sponsor-grid { border-top: 1px solid var(--hair); border-left: 1px solid var(--hair); }
 .subpage-light .sponsor-cell { border-bottom: 1px solid var(--hair); border-right: 1px solid var(--hair); }
@@ -177,6 +174,13 @@
 .subpage-light .field-error { color: #b42318; }
 .subpage-light .field-hint { color: var(--ink-faint); }
 .subpage-light .field-checkbox label { color: var(--ink-soft); }
+.subpage-light .choice-scale-label,
+.subpage-light .choice-scale-ends { color: var(--ink-faint); }
+.subpage-light .choice-scale button { background: #fff; border: 1px solid var(--hair); color: var(--ink-text); }
+.subpage-light .choice-scale button:hover { border-color: var(--pm-accent); }
+.subpage-light .choice-scale button[aria-checked="true"] {
+  background: var(--pm-accent); border-color: var(--pm-accent); color: var(--ink);
+}
 .subpage-light .field input[aria-invalid="true"],
 .subpage-light .field textarea[aria-invalid="true"],
 .subpage-light .field select[aria-invalid="true"] { border-color: #dc2626; }
