@@ -17,10 +17,6 @@ type EventRow = Tables<"events">;
 const OTHER_EVENT = "__other__";
 
 const RATINGS = [1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }));
-const MEMBER_CHOICES = [
-  { value: true, label: "Yes" },
-  { value: false, label: "No" },
-];
 
 /**
  * Anonymous event feedback. Reached by QR code at events, so the URL stays
@@ -224,13 +220,27 @@ export function Attendance() {
                   )}
 
                   {!isOtherEvent && (
-                    <ChoiceGroup
-                      id="att-member"
-                      label="Are you a MUTIS member? *"
-                      options={MEMBER_CHOICES}
-                      value={isMember}
-                      onChange={setIsMember}
-                    />
+                    <fieldset className="field-radios">
+                      <legend>Are you a MUTIS member? *</legend>
+                      <div className="radio-row">
+                        {[
+                          { value: true, label: "Yes" },
+                          { value: false, label: "No" },
+                        ].map((o) => (
+                          <label key={o.label}>
+                            <input
+                              type="radio"
+                              name="is-member"
+                              value={o.label.toLowerCase()}
+                              checked={isMember === o.value}
+                              onChange={() => setIsMember(o.value)}
+                              required
+                            />
+                            {o.label}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
                   )}
 
                   {!isOtherEvent && isMember && (
@@ -316,10 +326,10 @@ export function Attendance() {
 }
 
 /**
- * A row of equal-width square buttons that behaves as a radio group:
- * one tab stop, arrow keys move the selection (WAI-ARIA radio pattern).
+ * A row of equal-width square buttons that behaves as a radio group (the
+ * 1–5 rating): one tab stop, arrow keys move the selection (WAI-ARIA radio pattern).
  */
-function ChoiceGroup<T extends string | number | boolean>({
+function ChoiceGroup<T extends string | number>({
   id,
   label,
   options,

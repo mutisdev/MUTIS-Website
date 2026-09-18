@@ -175,7 +175,9 @@
 .subpage-light .field-hint { color: var(--ink-faint); }
 .subpage-light .field-checkbox label { color: var(--ink-soft); }
 .subpage-light .choice-scale-label,
-.subpage-light .choice-scale-ends { color: var(--ink-faint); }
+.subpage-light .choice-scale-ends,
+.subpage-light .field-radios legend { color: var(--ink-faint); }
+.subpage-light .field-radios .radio-row label { color: var(--ink-text); }
 .subpage-light .choice-scale button { background: #fff; border: 1px solid var(--hair); color: var(--ink-text); }
 .subpage-light .choice-scale button:hover { border-color: var(--pm-accent); }
 .subpage-light .choice-scale button[aria-checked="true"] {
