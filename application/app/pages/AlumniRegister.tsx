@@ -7,8 +7,8 @@ import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
 import { PrivacyConsent } from "@/app/components/PrivacyConsent";
 import { Captcha } from "@/app/components/Captcha";
-import { useCaptcha, CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
-import { submitForm } from "@/app/lib/submitForm";
+import { useCaptcha } from "@/app/hooks/useCaptcha";
+import { submitForm, submitErrorMessage } from "@/app/lib/submitForm";
 
 const SUCCESS_TOAST_MS = 10000;
 
@@ -231,11 +231,7 @@ export function AlumniRegister() {
     resetCaptcha();
 
     if (!result.ok) {
-      fail(
-        result.code === "captcha_failed"
-          ? CAPTCHA_FAILED_MESSAGE
-          : `Something went wrong. Please try again or email us at ${settings.contact_email}.`
-      );
+      fail(submitErrorMessage(result, { contact: `email us at ${settings.contact_email}` }));
       return;
     }
 

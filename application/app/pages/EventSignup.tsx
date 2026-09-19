@@ -13,8 +13,8 @@ import { normaliseEmail } from "@shared/uniEmail";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { Captcha } from "@/app/components/Captcha";
-import { useCaptcha, CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
-import { submitForm } from "@/app/lib/submitForm";
+import { useCaptcha } from "@/app/hooks/useCaptcha";
+import { submitForm, submitErrorMessage } from "@/app/lib/submitForm";
 
 type EventRow = Tables<"events">;
 
@@ -123,11 +123,10 @@ export function EventSignup() {
 
     if (!result.ok) {
       fail(
-        result.code === "duplicate"
-          ? "You've already signed up for this event with that email."
-          : result.code === "captcha_failed"
-            ? CAPTCHA_FAILED_MESSAGE
-            : "Something went wrong. Please try again or email us at mutis@manchesterstudentsunion.com.",
+        submitErrorMessage(result, {
+          contact: "email us at mutis@manchesterstudentsunion.com",
+          duplicate: "You've already signed up for this event with that email.",
+        }),
       );
       return;
     }

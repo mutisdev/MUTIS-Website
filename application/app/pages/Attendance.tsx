@@ -9,8 +9,8 @@ import { normaliseEmail } from "@shared/uniEmail";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { Captcha } from "@/app/components/Captcha";
-import { useCaptcha, CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
-import { submitForm } from "@/app/lib/submitForm";
+import { useCaptcha } from "@/app/hooks/useCaptcha";
+import { submitForm, submitErrorMessage } from "@/app/lib/submitForm";
 
 type EventRow = Tables<"events">;
 
@@ -110,13 +110,7 @@ export function Attendance() {
     resetCaptcha();
 
     if (!result.ok) {
-      fail(
-        result.code === "captcha_failed"
-          ? CAPTCHA_FAILED_MESSAGE
-          : result.code === "invalid" && result.message
-            ? result.message
-            : `Something went wrong. Please try again or email us at ${settings.contact_email}.`
-      );
+      fail(submitErrorMessage(result, { contact: `email us at ${settings.contact_email}` }));
       return;
     }
 

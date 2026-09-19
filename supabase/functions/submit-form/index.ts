@@ -203,7 +203,7 @@ const handlers: Record<string, Handler> = {
       const { error: uploadError } = await db.storage
         .from("alumni_submission_photos")
         .upload(photoPath, photo, { contentType: "image/jpeg" });
-      if (uploadError) return { error: { message: uploadError.message } };
+      if (uploadError) return { error: { code: "storage_upload", message: uploadError.message } };
       photoUrl = db.storage.from("alumni_submission_photos").getPublicUrl(photoPath).data.publicUrl;
     }
 
@@ -215,28 +215,46 @@ const handlers: Record<string, Handler> = {
   },
 };
 
+// Error responses are { code, error?, detail? }. `code` is one fixed value per
+// failure mode and `detail` narrows it (Postgres code, reCAPTCHA error codes),
+// so the reference the visitor sees on the form points at one branch here.
+// Nothing sensitive goes in `detail`: no raw database messages.
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ code: "method_not_allowed" }, 405);
 
+  // JSON for every form except one with a file (the alumni photo), which
+  // comes as multipart. Some in-app browsers (Instagram) fail to send
+  // multipart bodies, so the website only uses it when it must.
   let formName: string;
   let token: string;
   let payload: Payload;
   let photo: File | null = null;
   try {
-    const body = await req.formData();
-    formName = String(body.get("form") ?? "");
-    token = String(body.get("token") ?? "");
-    payload = JSON.parse(String(body.get("payload") ?? "{}"));
-    const photoField = body.get("photo");
-    if (photoField instanceof File) photo = photoField;
-  } catch {
-    return json({ code: "invalid", error: "Invalid request body" }, 400);
+    const contentType = req.headers.get("content-type")?.toLowerCase() ?? "";
+    if (contentType.startsWith("application/json")) {
+      const body = await req.json();
+      formName = String(body?.form ?? "");
+      token = String(body?.token ?? "");
+      payload = body?.payload ?? {};
+      if (typeof payload !== "object" || payload === null || Array.isArray(payload)) throw new Error("payload");
+    } else {
+      const body = await req.formData();
+      formName = String(body.get("form") ?? "");
+      token = String(body.get("token") ?? "");
+      payload = JSON.parse(String(body.get("payload") ?? "{}"));
+      const photoField = body.get("photo");
+      if (photoField instanceof File) photo = photoField;
+    }
+  } catch (err) {
+    console.warn("Unreadable request body", req.headers.get("content-type"), err);
+    return json({ code: "bad_request", error: "Invalid request body" }, 400);
   }
 
   const handler = handlers[formName];
-  if (!handler) return json({ code: "invalid", error: "Unknown form" }, 400);
-  if (photo && formName !== "alumni") return json({ code: "invalid", error: "Unexpected file" }, 400);
+  if (!handler) return json({ code: "unknown_form", error: "Unknown form", detail: formName.slice(0, 50) }, 400);
+  if (photo && formName !== "alumni") return json({ code: "unexpected_file", error: "Unexpected file" }, 400);
 
   try {
     // Feedback is anonymous, so don't pass the visitor's IP on to Google for it.
@@ -245,11 +263,11 @@ Deno.serve(async (req: Request) => {
     const captcha = await verifyRecaptcha(token, remoteIp);
     if (!captcha.ok) {
       console.warn("reCAPTCHA rejected", formName, captcha.errorCodes);
-      return json({ code: "captcha_failed" }, 400);
+      return json({ code: "captcha_failed", detail: captcha.errorCodes.join(",") }, 400);
     }
   } catch (err) {
     console.error("reCAPTCHA verification error", err);
-    return json({ code: "unknown" }, 500);
+    return json({ code: "captcha_unavailable" }, 502);
   }
 
   const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -259,12 +277,12 @@ Deno.serve(async (req: Request) => {
     if (error) {
       if (error.code === "23505") return json({ code: "duplicate" }, 409);
       console.error(`Failed to insert ${formName} submission`, error);
-      return json({ code: "unknown" }, 500);
+      return json({ code: "db_error", detail: error.code ?? "none" }, 500);
     }
   } catch (err) {
     if (err instanceof InvalidInput) return json({ code: "invalid", error: err.message }, 400);
     console.error(`Unexpected error handling ${formName}`, err);
-    return json({ code: "unknown" }, 500);
+    return json({ code: "internal", detail: err instanceof Error ? err.name : typeof err }, 500);
   }
 
   return json({ ok: true }, 200);
