@@ -16,8 +16,8 @@ import {
   FREE_SCHOOL_MEALS_OPTIONS,
 } from "@/app/data/diversityOptions";
 import { Captcha } from "@/app/components/Captcha";
-import { useCaptcha, CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
-import { submitForm } from "@/app/lib/submitForm";
+import { useCaptcha } from "@/app/hooks/useCaptcha";
+import { submitForm, submitErrorMessage } from "@/app/lib/submitForm";
 
 const SUCCESS_TOAST_MS = 10000;
 
@@ -130,11 +130,10 @@ export function Signup() {
 
     if (!result.ok) {
       fail(
-        result.code === "duplicate"
-          ? "You've already signed up with that email."
-          : result.code === "captcha_failed"
-            ? CAPTCHA_FAILED_MESSAGE
-            : "Something went wrong. Please try again, or get in touch through our Contact page."
+        submitErrorMessage(result, {
+          contact: "get in touch through our Contact page",
+          duplicate: "You've already signed up with that email.",
+        })
       );
       return;
     }
