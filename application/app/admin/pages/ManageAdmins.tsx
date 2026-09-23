@@ -11,9 +11,10 @@ type AdminRow = Database["public"]["Tables"]["admin_users"]["Row"];
 
 // Admins are identified by name across the dashboard. An admin invited before
 // the name field existed, or one who hasn't accepted their invite yet, has no
-// name saved — their email is the only thing left to identify the row by.
+// name saved — those rows are labelled rather than falling back to the email,
+// which is deliberately never displayed anywhere in the admin area.
 function displayName(row: Pick<AdminRow, "full_name" | "email">) {
-  return row.full_name ?? row.email;
+  return row.full_name ?? "Unnamed admin";
 }
 
 function formatDate(iso: string) {

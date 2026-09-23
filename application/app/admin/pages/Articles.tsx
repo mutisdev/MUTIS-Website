@@ -55,7 +55,7 @@ function formatDate(iso: string | null) {
 }
 
 export function Articles() {
-  const { session } = useAuth();
+  const { session, adminName } = useAuth();
   const toast = useToast();
   const { insertRow, updateRow, deleteRow } = useAdminMutation();
 
@@ -105,7 +105,11 @@ export function Articles() {
       });
   }, [rows, statusFilter, tagFilter, search, sortBy]);
 
-  const defaultAuthorName = () => session?.user.user_metadata?.full_name ?? session?.user.email ?? "";
+  // Prefills the byline on a new article. Never falls back to the email: this
+  // value is published with the article, so an admin with no name saved gets a
+  // blank field to fill in rather than their address on the public site.
+  const defaultAuthorName = () =>
+    adminName ?? (session?.user.user_metadata?.full_name as string | undefined) ?? "";
 
   const openCreate = () => {
     setForm(emptyForm(defaultAuthorName()));

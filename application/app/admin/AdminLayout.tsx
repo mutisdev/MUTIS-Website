@@ -179,7 +179,7 @@ export function AdminLayout() {
           </button>
           <div className="hidden lg:block" />
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{adminName ?? session?.user.email}</span>
+            <span className="text-sm text-muted-foreground">{adminName ?? "Unnamed admin"}</span>
             <button
               onClick={signOut}
               className="flex items-center gap-1.5 rounded-lg border border-border px-3.5 py-2 text-sm text-foreground transition-colors hover:bg-white/5"
