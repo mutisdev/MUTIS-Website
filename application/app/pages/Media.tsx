@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
 import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
-import { usePodcastSettings } from "@/app/hooks/usePodcastSettings";
-import { SpotifyEmbedCard } from "@/app/components/SpotifyEmbedCard";
+import { usePodcastEpisodes } from "@/app/hooks/usePodcastEpisodes";
+import { SpotifyEmbedList } from "@/app/components/SpotifyEmbedCard";
 
 const MEDIA_LINKS = [
   { to: "/gallery", num: "01", title: "Gallery", desc: "Photography from conferences, socials, and speaker nights across the MUTIS year." },
@@ -12,9 +12,9 @@ const MEDIA_LINKS = [
 const PODCAST_INTRO = "Conversations on markets, careers, and society life — stream every episode on Spotify.";
 
 export function Media() {
-  const { settings, isLoading } = usePodcastSettings();
+  const { episodes, isLoading } = usePodcastEpisodes();
 
-  useReveal([MEDIA_LINKS.length, isLoading]);
+  useReveal([MEDIA_LINKS.length, episodes.length, isLoading]);
   const bgImage = usePageBackgroundImage("media");
 
   return (
@@ -53,7 +53,7 @@ export function Media() {
           <div className="page-eyebrow r-up"><span className="bar" />Listen</div>
           <h2 className="r-up">The MUTIS podcast</h2>
           <p className="lede r-up" style={{ marginBottom: 32 }}>{PODCAST_INTRO}</p>
-          <SpotifyEmbedCard settings={settings} isLoading={isLoading} />
+          <SpotifyEmbedList episodes={episodes} isLoading={isLoading} />
         </div>
       </section>
     </>

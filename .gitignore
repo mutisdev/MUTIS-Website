@@ -12,6 +12,7 @@ dist/
 .env
 .env.local
 .env.*.local
+.mcp.json
 
 # Local config files
 *.local

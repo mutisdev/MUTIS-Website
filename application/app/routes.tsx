@@ -132,7 +132,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: "podcast",
-                lazy: () => import("./admin/pages/PodcastSettings").then((m) => ({ Component: m.PodcastSettingsPage })),
+                lazy: () => import("./admin/pages/Podcast").then((m) => ({ Component: m.Podcast })),
               },
               {
                 path: "submissions",

@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { verifyRecaptcha } from "../_shared/recaptcha.ts";
 import { isUniEmail, normaliseEmail, UNI_EMAIL_ERROR } from "../_shared/uniEmail.ts";
+import { hasEventEnded } from "../_shared/eventStatus.ts";
 
 // Single entry point for every public form on the site. The anon role no
 // longer has INSERT on the submission tables (or upload on
@@ -91,12 +92,13 @@ const handlers: Record<string, Handler> = {
     const eventId = str(p, "event_id", 64)!;
     const { data: event } = await db
       .from("events")
-      .select("id")
+      .select("id, starts_at, ends_at")
       .eq("id", eventId)
       .eq("is_published", true)
       .eq("signup_enabled", true)
       .maybeSingle();
     if (!event) throw new InvalidInput("Signups aren't open for this event.");
+    if (hasEventEnded(event)) throw new InvalidInput("This event has already happened, so signups are closed.");
     return await db.from("event_signups").insert({
       event_id: eventId,
       name: str(p, "name", 200),

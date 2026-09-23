@@ -12,6 +12,7 @@ export type ContentTable =
   | "presidents"
   | "articles"
   | "podcast_settings"
+  | "podcast_episodes"
   | "gallery_images"
   | "recordings"
   | "past_speakers"
