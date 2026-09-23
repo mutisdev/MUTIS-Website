@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "../AuthProvider";
@@ -7,22 +7,38 @@ import { FormMessage } from "../components/FormMessage";
 type Status = "idle" | "submitting" | "error" | "done";
 
 export function SetPassword() {
-  const { session, isLoading } = useAuth();
+  const { session, adminName, isLoading, setAdminName } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Supabase appends `?type=invite` or `?type=recovery` to the redirect URL —
   // both land here since they work identically once the magic link has
-  // established a session; only the copy differs.
-  const isInvite = searchParams.get("type") === "invite";
+  // established a session; only the copy differs. `welcome` is set by
+  // create-invite so that someone who already had an account and has just been
+  // made an admin is greeted as a new admin rather than told to reset a
+  // password they may never have had.
+  const isInvite = searchParams.get("type") === "invite" || searchParams.get("welcome") === "1";
 
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
 
+  // An invited admin has no name yet; someone here to reset a password
+  // usually does, so prefill it rather than making them retype it. adminName
+  // arrives asynchronously, hence the effect rather than a lazy initialiser.
+  useEffect(() => {
+    if (adminName) setName((current) => current || adminName);
+  }, [adminName]);
+
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (!name.trim()) {
+      setError("Please enter your name.");
+      setStatus("error");
+      return;
+    }
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
       setStatus("error");
@@ -37,12 +53,30 @@ export function SetPassword() {
     setStatus("submitting");
     setError("");
 
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const fullName = name.trim();
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+      data: { full_name: fullName },
+    });
 
     if (updateError) {
       setError(updateError.message);
       setStatus("error");
       return;
+    }
+
+    // The name shown around the admin panel comes from admin_users, not from
+    // auth metadata, so it has to be written there too. The password is
+    // already saved at this point, so a failure here must not block sign-in —
+    // it just leaves the name unset, which every display falls back on.
+    const { error: nameError } = await supabase
+      .from("admin_users")
+      .update({ full_name: fullName })
+      .eq("user_id", session!.user.id);
+    if (nameError) {
+      console.error("Failed to save admin name", nameError);
+    } else {
+      setAdminName(fullName);
     }
 
     setStatus("done");
@@ -77,12 +111,30 @@ export function SetPassword() {
         <div className="mb-[32px] text-center">
           <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">MUTIS</p>
           <h1 className="mt-[8px] text-[22px] font-medium text-foreground">
-            {isInvite ? "Set your password" : "Reset your password"}
+            {isInvite ? "Set up your account" : "Reset your password"}
           </h1>
           <p className="mt-[8px] text-[13px] text-muted-foreground">Signed in as {session.user.email}</p>
         </div>
 
         <form onSubmit={onSubmit} className="flex flex-col gap-[20px] rounded-[16px] border border-border bg-card p-[32px]">
+          <div className="flex flex-col gap-[6px]">
+            <label htmlFor="set-name" className="text-[12px] font-medium text-muted-foreground">
+              Your name
+            </label>
+            <input
+              id="set-name"
+              type="text"
+              required
+              autoComplete="name"
+              placeholder="Jane Doe"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-[10px] border border-input bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden transition-colors focus:border-accent"
+            />
+            <p className="text-[12px] leading-[1.5] text-muted-foreground">
+              This is what other admins see next to your activity in the dashboard.
+            </p>
+          </div>
           <div className="flex flex-col gap-[6px]">
             <label htmlFor="set-password" className="text-[12px] font-medium text-muted-foreground">
               New password
@@ -120,7 +172,7 @@ export function SetPassword() {
             disabled={status === "submitting" || status === "done"}
             className="w-full rounded-[10px] bg-primary px-[20px] py-[12px] text-[14px]! font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
-            {status === "submitting" ? "Saving…" : "Set password & continue"}
+            {status === "submitting" ? "Saving…" : "Save & continue"}
           </button>
         </form>
       </div>

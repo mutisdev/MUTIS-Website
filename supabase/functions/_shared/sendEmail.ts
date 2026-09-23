@@ -11,7 +11,9 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 const BREVO_URL = "https://api.brevo.com/v3/smtp/email";
 const SENDER = { name: "MUTIS", email: "info@mutisfinancesociety.com" };
 const SITE_URL = "https://mutisfinancesociety.com";
-const LOGO_URL =
+/** Exported because every template's header uses it, including the auth-link
+ * emails that don't go through eventEmailParams. */
+export const LOGO_URL =
   "https://ktleyfwpcuyvvyxpvipp.supabase.co/storage/v1/object/public/brand_assets/MUTISLogo.png";
 const TIME_ZONE = "Europe/London";
 
