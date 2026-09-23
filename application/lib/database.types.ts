@@ -886,6 +886,51 @@ export type Database = {
         }
         Relationships: []
       }
+      podcast_episodes: {
+        Row: {
+          created_at: string
+          display_order: number
+          embed_height: number | null
+          embed_html: string | null
+          embed_title: string | null
+          embed_width: number | null
+          fetched_at: string | null
+          id: string
+          is_published: boolean
+          spotify_url: string
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          embed_height?: number | null
+          embed_html?: string | null
+          embed_title?: string | null
+          embed_width?: number | null
+          fetched_at?: string | null
+          id?: string
+          is_published?: boolean
+          spotify_url: string
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          embed_height?: number | null
+          embed_html?: string | null
+          embed_title?: string | null
+          embed_width?: number | null
+          fetched_at?: string | null
+          id?: string
+          is_published?: boolean
+          spotify_url?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       podcast_settings: {
         Row: {
           created_at: string

@@ -681,6 +681,27 @@
    Spotify podcast embed (Media / Podcast pages)
    ========================================================== */
 
+/* Ordered episode slots: one column on narrow screens, two once there's room
+   for a pair of 624px-wide Spotify players side by side. */
+.spotify-embed-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 624px));
+  gap: 48px 40px;
+  align-items: start;
+}
+.spotify-embed-head {
+  display: flex; align-items: baseline; gap: 14px;
+  margin-bottom: 14px;
+}
+.spotify-embed-num {
+  font-family: var(--font-display);
+  font-size: 13px; letter-spacing: 0.16em;
+  color: var(--pm-accent);
+}
+.spotify-embed-title {
+  font-size: 14px; line-height: 1.4;
+  color: var(--muted);
+}
 .spotify-embed-frame {
   width: 100%;
   max-width: 624px;
@@ -694,7 +715,7 @@
 }
 .spotify-embed-fallback {
   display: inline-flex; align-items: center; gap: 6px;
-  margin-top: 20px;
+  margin-top: 14px;
   font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--pm-accent-2, #9ec1d4);
   text-decoration: none;
