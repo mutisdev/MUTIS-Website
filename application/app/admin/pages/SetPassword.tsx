@@ -126,7 +126,7 @@ export function SetPassword() {
               type="text"
               required
               autoComplete="name"
-              placeholder="Jane Doe"
+              placeholder="Jane"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-[10px] border border-input bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden transition-colors focus:border-accent"
