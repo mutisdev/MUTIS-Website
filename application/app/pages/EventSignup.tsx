@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 import { Captcha } from "@/app/components/Captcha";
 import { useCaptcha } from "@/app/hooks/useCaptcha";
 import { submitForm, submitErrorMessage } from "@/app/lib/submitForm";
+import { hasEventEnded } from "@shared/eventStatus";
 
 type EventRow = Tables<"events">;
 
@@ -240,7 +241,12 @@ export function EventSignup() {
               <div className="page-eyebrow r-up"><span className="bar" />Sign up</div>
               <h2 className="r-up">Reserve your spot</h2>
 
-              {!event.signup_enabled ? (
+              {hasEventEnded(event) ? (
+                <p className="event-signup-closed r-up">
+                  This event has already happened, so signups are closed. Head to the{" "}
+                  <Link to="/events">events page</Link> for upcoming events.
+                </p>
+              ) : !event.signup_enabled ? (
                 <p className="event-signup-closed r-up">
                   Signups aren't open for this event right now. Check back later, or head to the{" "}
                   <Link to="/events">events page</Link> for other upcoming events.

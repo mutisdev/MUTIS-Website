@@ -16,5 +16,5 @@
       "@shared/*": ["supabase/functions/_shared/*"]
     }
   },
-  "include": ["application", "vite.config.ts", "supabase/functions/_shared/uniEmail.ts"]
+  "include": ["application", "vite.config.ts", "supabase/functions/_shared/uniEmail.ts", "supabase/functions/_shared/eventStatus.ts"]
 }

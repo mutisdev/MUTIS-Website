@@ -21,7 +21,7 @@ export function FreshersFairBanner() {
       <div className="pm-event-banner-body">
         <p className="pm-event-banner-text">
           <span className="pm-event-banner-eyebrow">Freshers Fair</span>
-          Come find us at the Freshers Fair — meet the committee and sign up on the day.
+          Come find us at the Freshers Fair on Friday 25 September — meet the committee and sign up on the day.
         </p>
         <Link to="/signup" className="pm-event-banner-cta" style={{ textDecoration: "none" }}>
           Sign up to MUTIS →

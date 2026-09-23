@@ -6,6 +6,7 @@ import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePage
 import { htmlToExcerpt } from "@/app/lib/htmlExcerpt";
 import { SITE_URL } from "@/app/hooks/usePageMeta";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
+import { eventEndTime, hasEventEnded } from "@shared/eventStatus";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
@@ -52,17 +53,13 @@ export function Events() {
       setIsLoading(true);
       setLoadError("");
 
-      // Hide events once they've ended — a read-time filter, not a cron job.
-      // Events with an ends_at stay visible until that passes; events without
-      // one (ends_at is optional) fall back to 24h after their scheduled
-      // start. Always sorted chronologically; there's no user-facing sort control.
-      const now = new Date().toISOString();
-      const graceCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      // All published events; they're split into upcoming and past at render
+      // time (see hasEventEnded), so ended events move to "Past events" as
+      // soon as they finish — no cron job.
       const { data, error } = await supabase
         .from("events")
         .select("*")
         .eq("is_published", true)
-        .or(`and(ends_at.is.null,starts_at.gt.${graceCutoff}),ends_at.gt.${now}`)
         .order("starts_at", { ascending: true });
 
       if (cancelled) {
@@ -88,6 +85,13 @@ export function Events() {
     };
   }, []);
 
+  const now = Date.now();
+  const upcomingEvents = events.filter((ev) => !hasEventEnded(ev, now));
+  // Most recent first.
+  const pastEvents = events
+    .filter((ev) => hasEventEnded(ev, now))
+    .sort((a, b) => eventEndTime(b) - eventEndTime(a));
+
   useReveal([events.length, isLoading, loadError]);
   const bgImage = usePageBackgroundImage("events");
 
@@ -95,10 +99,10 @@ export function Events() {
   // hardcoded. Each event now has its own page at /events/:id/signup, so
   // `url` points there instead of the listing page.
   const eventsJsonLd =
-    events.length > 0
+    upcomingEvents.length > 0
       ? {
           "@context": "https://schema.org",
-          "@graph": events.map((ev) => ({
+          "@graph": upcomingEvents.map((ev) => ({
             "@type": "Event",
             name: ev.title,
             startDate: ev.starts_at,
@@ -140,36 +144,12 @@ export function Events() {
             <p className="lede r-up" role="status">Loading upcoming events…</p>
           ) : loadError ? (
             <p className="lede r-up" role="alert" style={{ color: "var(--ink-soft)" }}>{loadError}</p>
-          ) : events.length === 0 ? (
+          ) : upcomingEvents.length === 0 ? (
             <p className="lede r-up">Nothing scheduled yet. Check back soon.</p>
           ) : (
             <div className="card-grid">
-              {events.map((ev) => (
-                <div className="dark-card r-up" key={ev.id}>
-                  {ev.cover_image_url && (
-                    <img
-                      src={ev.cover_image_url}
-                      alt={ev.title}
-                      className="event-thumb"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  )}
-                  <h3>{ev.title}</h3>
-                  <div className="meta"><span>{formatEventDate(ev.starts_at)}</span><span>·</span><span>{ev.location}</span></div>
-                  {ev.tags.length > 0 && (
-                    <div className="tag-list">
-                      {ev.tags.map((tag) => (
-                        <span key={tag} className="tag-badge">{tag}</span>
-                      ))}
-                    </div>
-                  )}
-                  <p className="excerpt">{htmlToExcerpt(ev.description)}</p>
-                  <div className="foot">
-                    <span>{ev.signup_enabled ? "Signup open" : "Details"}</span>
-                    <Link to={`/events/${ev.id}/signup`} className="more" style={{ textDecoration: "none" }}>View details →</Link>
-                  </div>
-                </div>
+              {upcomingEvents.map((ev) => (
+                <EventCard key={ev.id} event={ev} />
               ))}
             </div>
           )}
@@ -179,6 +159,16 @@ export function Events() {
       <section className="page-section" style={{ background: "var(--base)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
         <div className="inner">
           <div className="page-eyebrow r-up"><span className="bar" />Past Events</div>
+          {pastEvents.length > 0 && (
+            <>
+              <h2 className="r-up">Past events</h2>
+              <div className="card-grid" style={{ marginBottom: 64 }}>
+                {pastEvents.map((ev) => (
+                  <EventCard key={ev.id} event={ev} past />
+                ))}
+              </div>
+            </>
+          )}
           <h2 className="r-up">Past examples of events</h2>
           <div className="event-examples r-up">
             {PAST_EVENT_EXAMPLES.map((img) => (
@@ -209,5 +199,35 @@ export function Events() {
         </div>
       </section>
     </>
+  );
+}
+
+function EventCard({ event: ev, past = false }: { event: EventRow; past?: boolean }) {
+  return (
+    <div className="dark-card r-up">
+      {ev.cover_image_url && (
+        <img
+          src={ev.cover_image_url}
+          alt={ev.title}
+          className="event-thumb"
+          loading="lazy"
+          decoding="async"
+        />
+      )}
+      <h3>{ev.title}</h3>
+      <div className="meta"><span>{formatEventDate(ev.starts_at)}</span><span>·</span><span>{ev.location}</span></div>
+      {ev.tags.length > 0 && (
+        <div className="tag-list">
+          {ev.tags.map((tag) => (
+            <span key={tag} className="tag-badge">{tag}</span>
+          ))}
+        </div>
+      )}
+      <p className="excerpt">{htmlToExcerpt(ev.description)}</p>
+      <div className="foot">
+        <span>{past ? "Event ended" : ev.signup_enabled ? "Signup open" : "Details"}</span>
+        <Link to={`/events/${ev.id}/signup`} className="more" style={{ textDecoration: "none" }}>View details →</Link>
+      </div>
+    </div>
   );
 }
