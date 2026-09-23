@@ -15,9 +15,9 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // unlisted redirect_to, it silently substitutes the Site URL, which would
 // drop invitees on the homepage instead of the set-password form.
 const SITE_URL = "https://www.mutisfinancesociety.com";
-// Kept in step with Authentication > Settings > Email link expiry in the
-// dashboard; it's only the wording shown to the invitee, not the real TTL.
-const EXPIRY_TEXT = "1 hour";
+// Wording only — the real TTL is mailer_otp_exp in the project's auth config,
+// currently 86400s. Update this if that changes.
+const EXPIRY_TEXT = "24 hours";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

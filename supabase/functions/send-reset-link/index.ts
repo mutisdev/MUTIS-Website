@@ -16,8 +16,9 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // Must match an allowlisted Redirect URL, `www.` included — an unlisted
 // redirect_to is silently replaced with the Site URL rather than rejected.
 const SITE_URL = "https://www.mutisfinancesociety.com";
-// Kept in step with Authentication > Settings > Email link expiry.
-const EXPIRY_TEXT = "1 hour";
+// Wording only — the real TTL is mailer_otp_exp in the project's auth config,
+// currently 86400s. Update this if that changes.
+const EXPIRY_TEXT = "24 hours";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
