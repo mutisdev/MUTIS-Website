@@ -9,6 +9,14 @@ import { usePageCache, hasCached } from "../usePageCache";
 
 type AdminRow = Database["public"]["Tables"]["admin_users"]["Row"];
 
+// Admins are identified by name across the dashboard. An admin invited before
+// the name field existed, or one who hasn't accepted their invite yet, has no
+// name saved — those rows are labelled rather than falling back to the email,
+// which is deliberately never displayed anywhere in the admin area.
+function displayName(row: Pick<AdminRow, "full_name" | "email">) {
+  return row.full_name ?? "Unnamed admin";
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
@@ -53,18 +61,34 @@ export function ManageAdmins() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const emailByUserId = new Map(rows.map((r) => [r.user_id, r.email]));
+  const nameByUserId = new Map(rows.map((r) => [r.user_id, displayName(r)]));
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!email.trim()) return;
     setSubmitting(true);
-    const { data, error } = await supabase.functions.invoke<{ error?: string }>("admin-add-by-email", {
+    // create-invite generates the magic link itself and delivers it through
+    // Brevo, so inviting people isn't capped by Supabase's 2 emails/hour
+    // built-in mailer the way the old admin-add-by-email function was.
+    const { data, error } = await supabase.functions.invoke<{ error?: string }>("create-invite", {
       body: { email: email.trim() },
     });
     setSubmitting(false);
     if (error || data?.error) {
-      toast.error(data?.error ?? error?.message ?? "Could not add that admin.");
+      // invoke() leaves `data` null on a non-2xx and only reports "non-2xx
+      // status code", so the useful message ("already an admin", "already has
+      // an account") has to be read back off the response itself.
+      let message = data?.error ?? error?.message ?? "Could not add that admin.";
+      const response = (error as { context?: Response } | null)?.context;
+      if (response && typeof response.json === "function") {
+        try {
+          const body = await response.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // Not JSON — keep the fallback above.
+        }
+      }
+      toast.error(message);
       return;
     }
     toast.success(`${email.trim()} invited as an admin.`);
@@ -81,18 +105,22 @@ export function ManageAdmins() {
       toast.error("Could not remove that admin.");
       return;
     }
-    toast.success(`${pendingDelete.email} removed.`);
+    toast.success(`${displayName(pendingDelete)} removed.`);
     setPendingDelete(null);
     fetchRows();
   };
 
   const columns: DataTableColumn<AdminRow>[] = [
-    { key: "email", label: "Email", render: (r) => r.email, sortValue: (r) => r.email },
-    { key: "full_name", label: "Name", render: (r) => r.full_name ?? "—" },
+    {
+      key: "full_name",
+      label: "Name",
+      render: (r) => displayName(r),
+      sortValue: (r) => displayName(r).toLowerCase(),
+    },
     {
       key: "added_by",
       label: "Added by",
-      render: (r) => (r.added_by ? (emailByUserId.get(r.added_by) ?? "—") : "—"),
+      render: (r) => (r.added_by ? (nameByUserId.get(r.added_by) ?? "—") : "—"),
     },
     { key: "added_at", label: "Added", render: (r) => formatDate(r.added_at), sortValue: (r) => r.added_at },
     {
@@ -121,7 +149,8 @@ export function ManageAdmins() {
       <h1 className="mt-[8px] text-[22px] font-medium text-foreground">Manage admins</h1>
       <p className="mt-[8px] text-[13px] leading-[1.6] text-muted-foreground">
         Every admin has identical privileges. Invite someone by email — this sends them an invite
-        link that lets them set a password directly. There's no public signup; access is invite-only.
+        link where they enter their name and set a password. There's no public signup; access is
+        invite-only.
       </p>
 
       <form onSubmit={onSubmit} className="mt-[24px] flex flex-col gap-[8px] sm:flex-row">
@@ -161,7 +190,7 @@ export function ManageAdmins() {
       <ConfirmDialog
         open={pendingDelete !== null}
         title="Remove admin access?"
-        description={`${pendingDelete?.email ?? ""} will immediately lose the ability to write anything in the admin panel. This does not delete their account, just their admin access.`}
+        description={`${pendingDelete ? displayName(pendingDelete) : ""} will immediately lose the ability to write anything in the admin panel. This does not delete their account, just their admin access.`}
         confirmLabel={deleting ? "Removing…" : "Remove"}
         destructive
         onConfirm={confirmDelete}

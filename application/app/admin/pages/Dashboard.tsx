@@ -71,7 +71,7 @@ function relativeTime(iso: string) {
 }
 
 export function Dashboard() {
-  const { session } = useAuth();
+  const { session, adminName } = useAuth();
   const [summary, setSummary] = usePageCache<SignupSummary | null>("admin:dashboard:summary", null);
   const [trendRange, setTrendRange] = usePageCache<TrendRange>("admin:dashboard:trendRange", "30d");
   const [trend, setTrend] = usePageCache<Partial<Record<TrendRange, TrendPoint[]>>>("admin:dashboard:trend", {});
@@ -181,7 +181,11 @@ export function Dashboard() {
   return (
     <div className="px-[24px] py-[48px] lg:px-[40px] lg:py-[56px]">
       <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">MUTIS Admin</p>
-      <h1 className="mt-[8px] text-[22px] font-medium text-foreground">Welcome, {session?.user.email}</h1>
+      {/* Falls back to a plain greeting rather than the email address: admin
+          emails are never shown anywhere in the dashboard. */}
+      <h1 className="mt-[8px] text-[22px] font-medium text-foreground">
+        {adminName ? `Welcome, ${adminName}` : "Welcome back"}
+      </h1>
       <p className="mt-[12px] text-[14px] leading-[1.6] text-muted-foreground">Sign-ups and site traffic at a glance.</p>
 
       <div className="mt-[24px] grid grid-cols-2 gap-[12px] md:grid-cols-3 xl:grid-cols-6">

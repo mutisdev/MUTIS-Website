@@ -427,3 +427,14 @@ static_files = ["./functions/_shared/email_templates/*.html"]
 # Called hourly by pg_cron; authorised by the x-webhook-secret header checked inside.
 verify_jwt = false
 static_files = ["./functions/_shared/email_templates/*.html"]
+
+[functions.create-invite]
+# verify_jwt stays on; the function additionally checks the caller has an
+# admin_users row before creating anyone's account.
+static_files = ["./functions/_shared/email_templates/*.html"]
+
+[functions.send-reset-link]
+# Called from the sign-in page by someone who is locked out and has no session.
+# Responds identically to every request so it can't be used to enumerate admins.
+verify_jwt = false
+static_files = ["./functions/_shared/email_templates/*.html"]

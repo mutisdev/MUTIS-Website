@@ -52,11 +52,12 @@ export function Login() {
     setStatus("submitting");
     setError("");
 
-    await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/admin/set-password`,
-    });
+    // Goes through Brevo rather than supabase.auth.resetPasswordForEmail, which
+    // uses Supabase's own mailer and its 2 emails/hour cap.
+    await supabase.functions.invoke("send-reset-link", { body: { email: email.trim() } });
     // Deliberately generic regardless of whether the email matches an
-    // account, so this doesn't leak which emails are registered admins.
+    // account, so this doesn't leak which emails are registered admins. The
+    // function returns the same 200 for the same reason.
     setStatus("sent");
   };
 

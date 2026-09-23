@@ -1,0 +1,11 @@
+-- Reason: Admins are now identified by their name rather than their email address
+-- everywhere in the admin dashboard, so each admin needs to be able to save the
+-- name they type in when they accept their invite and set a password.
+--
+-- admin_users already has a full_name column, and the admin_users_manage RLS
+-- policy already allows an admin to write to the table. What was missing is the
+-- table-level UPDATE grant: Postgres needs both a grant and a passing policy, so
+-- without this every "save my name" write failed with permission denied. The
+-- original grant migration deliberately left UPDATE out because no edit flow
+-- existed at the time; one exists now.
+grant update on public.admin_users to authenticated;
