@@ -190,7 +190,10 @@ export function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto">
+        {/* relative: absolutely positioned content (e.g. sr-only captions) must be
+            contained by this scroll box, or it stretches the document itself and
+            leaves a blank scrollable gap below the page. */}
+        <main className="relative flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

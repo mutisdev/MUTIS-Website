@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { ChevronUp, ChevronDown, Download } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 export interface DataTableColumn<T> {
   key: string;
@@ -25,6 +25,12 @@ interface DataTableProps<T> {
   visibleKeys?: ReadonlySet<string>;
   /** Extra controls rendered next to the Export CSV button (e.g. a column picker). */
   toolbar?: ReactNode;
+  /** When set, shows this many rows per page with controls beneath the table.
+   * Sorting and CSV export still cover every row, not just the current page. */
+  pageSize?: number;
+  /** Changing this sends the table back to page 1 (e.g. pass the active
+   * search and filters, so a new query doesn't open on an empty page). */
+  pageResetKey?: string;
 }
 
 type SortState = { key: string; direction: "asc" | "desc" } | null;
@@ -64,8 +70,17 @@ export function DataTable<T>({
   exportFilename,
   visibleKeys,
   toolbar,
+  pageSize,
+  pageResetKey,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState>(null);
+  const [page, setPage] = useState(0);
+  const [lastResetKey, setLastResetKey] = useState(pageResetKey);
+  const topRef = useRef<HTMLDivElement>(null);
+  if (pageResetKey !== lastResetKey) {
+    setLastResetKey(pageResetKey);
+    setPage(0);
+  }
   const columns = visibleKeys ? allColumns.filter((c) => visibleKeys.has(c.key)) : allColumns;
 
   const sorted = (() => {
@@ -82,8 +97,23 @@ export function DataTable<T>({
     return copy;
   })();
 
+  const pageCount = pageSize ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
+  // Clamped rather than reset, so deleting or re-filtering a row on the last
+  // page lands on the new last page instead of an empty one.
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageStart = pageSize ? currentPage * pageSize : 0;
+  const rows = pageSize ? sorted.slice(pageStart, pageStart + pageSize) : sorted;
+
+  const goToPage = (next: number) => {
+    setPage(next);
+    // Controls sit below the table, so bring the top of the new page back into view.
+    const top = topRef.current;
+    if (top && top.getBoundingClientRect().top < 0) top.scrollIntoView({ block: "start" });
+  };
+
   const toggleSort = (col: DataTableColumn<T>) => {
     if (!col.sortValue) return;
+    setPage(0);
     setSort((prev) => {
       if (!prev || prev.key !== col.key) return { key: col.key, direction: "asc" };
       if (prev.direction === "asc") return { key: col.key, direction: "desc" };
@@ -100,7 +130,7 @@ export function DataTable<T>({
   }
 
   return (
-    <>
+    <div ref={topRef} className="scroll-mt-[24px]">
       {(exportFilename || toolbar) && (
         <div className="mb-[12px] flex flex-wrap justify-end gap-[8px]">
           {toolbar}
@@ -143,7 +173,7 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {sorted.map((row) => (
+            {rows.map((row) => (
               <tr
                 key={keyField(row)}
                 onClick={() => onRowClick?.(row)}
@@ -164,7 +194,7 @@ export function DataTable<T>({
 
       {/* Mobile stacked cards */}
       <div className="flex flex-col gap-[12px] min-[901px]:hidden">
-        {sorted.map((row) => (
+        {rows.map((row) => (
           <div
             key={keyField(row)}
             onClick={() => onRowClick?.(row)}
@@ -181,6 +211,37 @@ export function DataTable<T>({
           </div>
         ))}
       </div>
-    </>
+
+      {pageSize && pageCount > 1 && (
+        <nav aria-label="Pagination" className="mt-[12px] flex flex-wrap items-center justify-between gap-[12px]">
+          <span className="text-[12px] tabular-nums text-muted-foreground">
+            Showing {pageStart + 1}–{pageStart + rows.length} of {sorted.length}
+          </span>
+          <div className="flex items-center gap-[8px]">
+            <button
+              type="button"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 0}
+              aria-label="Previous page"
+              className="inline-flex items-center rounded-[10px] border border-border bg-card p-[8px] text-foreground transition-colors hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card"
+            >
+              <ChevronLeft className="h-[14px] w-[14px]" />
+            </button>
+            <span className="text-[12px] tabular-nums text-foreground" aria-live="polite">
+              Page {currentPage + 1} of {pageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === pageCount - 1}
+              aria-label="Next page"
+              className="inline-flex items-center rounded-[10px] border border-border bg-card p-[8px] text-foreground transition-colors hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card"
+            >
+              <ChevronRight className="h-[14px] w-[14px]" />
+            </button>
+          </div>
+        </nav>
+      )}
+    </div>
   );
 }

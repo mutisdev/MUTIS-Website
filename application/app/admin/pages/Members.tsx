@@ -219,6 +219,8 @@ export function Members() {
             emptyMessage="No members."
             exportFilename="members.csv"
             visibleKeys={visibleKeys}
+            pageSize={25}
+            pageResetKey={`${statusFilter}|${search}`}
             toolbar={
               <ColumnPicker
                 groups={PICKER_GROUPS}
