@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { useAdminMutation } from "../useAdminMutation";
@@ -18,10 +18,14 @@ type GalleryImage = Database["public"]["Tables"]["gallery_images"]["Row"];
 type FormState = {
   image_url: string;
   caption: string;
+  category: string;
   is_published: boolean;
 };
 
-const EMPTY_FORM: FormState = { image_url: "", caption: "", is_published: true };
+const EMPTY_FORM: FormState = { image_url: "", caption: "", category: "", is_published: true };
+
+// Filter value for photos with no category (they show under "Other" on the site).
+const UNCATEGORISED = "__none__";
 
 export function Gallery() {
   const toast = useToast();
@@ -30,6 +34,10 @@ export function Gallery() {
   const [rows, setRows] = usePageCache<GalleryImage[]>("admin:gallery:rows", []);
   const [loading, setLoading] = useState(!hasCached("admin:gallery:rows"));
   const [publishedFilter, setPublishedFilter] = usePageCache<"all" | "published" | "unpublished">("admin:gallery:publishedFilter", "all");
+  const [categoryFilter, setCategoryFilter] = usePageCache<string>("admin:gallery:categoryFilter", "all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const { editing, setEditing, form, setForm, pendingDelete, setPendingDelete, closeDrawer, discardConfirmProps } =
     useDrawerFormCache<GalleryImage, FormState>("gallery", EMPTY_FORM);
@@ -48,13 +56,74 @@ export function Gallery() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Existing categories in photo order, offered as suggestions so the same
+  // name is reused rather than retyped with a different spelling.
+  const categories = useMemo(() => {
+    const seen = new Set<string>();
+    for (const r of rows) if (r.category) seen.add(r.category);
+    return [...seen];
+  }, [rows]);
+
   const filtered = useMemo(() => {
     return rows.filter((r) => {
       if (publishedFilter === "published" && !r.is_published) return false;
       if (publishedFilter === "unpublished" && r.is_published) return false;
+      if (categoryFilter === UNCATEGORISED && r.category) return false;
+      if (categoryFilter !== "all" && categoryFilter !== UNCATEGORISED && r.category !== categoryFilter) return false;
       return true;
     });
-  }, [rows, publishedFilter]);
+  }, [rows, publishedFilter, categoryFilter]);
+
+  // A cached filter can point at a category that no longer has any photos.
+  useEffect(() => {
+    if (categoryFilter !== "all" && categoryFilter !== UNCATEGORISED && !loading && !categories.includes(categoryFilter)) {
+      setCategoryFilter("all");
+    }
+  }, [categories, categoryFilter, loading, setCategoryFilter]);
+
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const allVisibleSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+  const toggleAllVisible = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const r of filtered) {
+        if (allVisibleSelected) next.delete(r.id);
+        else next.add(r.id);
+      }
+      return next;
+    });
+  };
+
+  const applyBulkCategory = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const category = bulkCategory.trim() || null;
+    const targets = rows.filter((r) => selected.has(r.id) && r.category !== category);
+    if (targets.length === 0) {
+      setSelected(new Set());
+      return;
+    }
+    setBulkSaving(true);
+    try {
+      await Promise.all(targets.map((r) => updateRow("gallery_images", r.id, { category }, r)));
+      toast.success(
+        `${targets.length} photo${targets.length === 1 ? "" : "s"} ${category ? `moved to "${category}"` : "set to no category"}.`
+      );
+      setSelected(new Set());
+      setBulkCategory("");
+    } catch {
+      toast.error("Some photos could not be updated.");
+    } finally {
+      setBulkSaving(false);
+      fetchRows();
+    }
+  };
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
@@ -62,7 +131,7 @@ export function Gallery() {
   };
 
   const openEdit = (row: GalleryImage) => {
-    setForm({ image_url: row.image_url, caption: row.caption ?? "", is_published: row.is_published });
+    setForm({ image_url: row.image_url, caption: row.caption ?? "", category: row.category ?? "", is_published: row.is_published });
     setEditing(row);
   };
 
@@ -77,6 +146,7 @@ export function Gallery() {
       const values = {
         image_url: form.image_url.trim(),
         caption: form.caption.trim() || null,
+        category: form.category.trim() || null,
         is_published: form.is_published,
       };
       if (editing === "new") {
@@ -138,9 +208,22 @@ export function Gallery() {
   };
 
   const isMobile = useIsMobile();
-  const isReordering = publishedFilter === "all" && !isMobile;
+  // Reordering a filtered subset would renumber it over the hidden photos.
+  const isReordering = publishedFilter === "all" && categoryFilter === "all" && !isMobile;
+
+  const selectBox = (r: GalleryImage) => (
+    <input
+      type="checkbox"
+      checked={selected.has(r.id)}
+      onChange={() => toggleSelected(r.id)}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={`Select ${r.caption ?? "photo"}`}
+      className="h-[16px] w-[16px] cursor-pointer accent-accent"
+    />
+  );
 
   const columns: DataTableColumn<GalleryImage>[] = [
+    { key: "select", label: "", render: selectBox },
     {
       key: "thumb",
       label: "",
@@ -152,6 +235,7 @@ export function Gallery() {
       ),
     },
     { key: "caption", label: "Caption", render: (r) => r.caption ?? "—" },
+    { key: "category", label: "Category", render: (r) => r.category ?? "—", sortValue: (r) => r.category ?? "" },
     {
       key: "is_published",
       label: "Published",
@@ -204,7 +288,47 @@ export function Gallery() {
           <option value="published">Published</option>
           <option value="unpublished">Unpublished</option>
         </select>
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-[10px] border border-input bg-input px-[12px] py-[10px] text-[13px]! text-foreground outline-hidden">
+          <option value="all">All categories</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+          <option value={UNCATEGORISED}>No category</option>
+        </select>
+        {filtered.length > 0 && (
+          <label className="ml-auto flex cursor-pointer items-center gap-[8px] text-[13px] text-muted-foreground">
+            <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} className="h-[16px] w-[16px] cursor-pointer accent-accent" />
+            Select all shown
+          </label>
+        )}
       </div>
+
+      {selected.size > 0 && (
+        <form onSubmit={applyBulkCategory} className="sticky top-[12px] z-10 mt-[16px] flex flex-wrap items-center gap-[8px] rounded-[12px] border border-accent/40 bg-background px-[14px] py-[10px] shadow-xs">
+          <span className="text-[13px] font-medium text-foreground">{selected.size} selected</span>
+          <span className="text-[13px] text-muted-foreground">Move to</span>
+          <input
+            type="text"
+            list="gallery-categories"
+            value={bulkCategory}
+            onChange={(e) => setBulkCategory(e.target.value)}
+            placeholder="Category (blank = none)"
+            className="min-w-[180px] flex-1 rounded-[10px] border border-input bg-input px-[12px] py-[8px] text-[13px]! text-foreground outline-hidden transition-colors focus:border-accent"
+          />
+          <button type="submit" disabled={bulkSaving} className="rounded-[10px] bg-primary px-[14px] py-[8px] text-[13px]! font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60">
+            {bulkSaving ? "Saving…" : "Apply"}
+          </button>
+          <button type="button" onClick={() => setSelected(new Set())} aria-label="Clear selection" className="rounded-[8px] p-[6px] text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground">
+            <X className="h-[14px] w-[14px]" />
+          </button>
+        </form>
+      )}
+
+      <datalist id="gallery-categories">
+        {categories.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
 
       <div className="mt-[24px]">
         {loading ? (
@@ -221,12 +345,16 @@ export function Gallery() {
             keyField={(r) => r.id}
             onReorder={onReorder}
             renderRow={(r) => (
-              <div onClick={() => openEdit(r)} className="grid cursor-pointer grid-cols-[56px_1fr_auto_auto] items-center gap-[12px] py-[10px] pr-[10px] text-[13px]">
+              <div onClick={() => openEdit(r)} className="grid cursor-pointer grid-cols-[auto_56px_1fr_auto_auto_auto] items-center gap-[12px] py-[10px] pr-[10px] text-[13px]">
+                {selectBox(r)}
                 <div className="flex h-[32px] w-[48px] items-center justify-center overflow-hidden rounded-[6px] border border-border bg-input">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={r.image_url} alt="" className="h-full w-full object-cover" />
                 </div>
                 <span className="min-w-0 truncate text-foreground">{r.caption ?? "Untitled"}</span>
+                <span className="max-w-[160px] truncate rounded-[6px] border border-border px-[8px] py-[2px] text-[12px] text-muted-foreground">
+                  {r.category ?? "No category"}
+                </span>
                 <span onClick={(e) => e.stopPropagation()}>
                   <PublishToggle
                     checked={r.is_published}
@@ -283,6 +411,18 @@ export function Gallery() {
               onChange={(e) => setForm({ ...form, caption: e.target.value })}
               className="w-full rounded-[10px] border border-input bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden transition-colors focus:border-accent"
             />
+          </Field>
+
+          <Field label="Category">
+            <input
+              type="text"
+              list="gallery-categories"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              placeholder="e.g. Annual Conference 2026"
+              className="w-full rounded-[10px] border border-input bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden transition-colors focus:border-accent"
+            />
+            <p className="text-[12px] text-muted-foreground">Pick an existing category or type a new one. Leave blank to show it under "Other".</p>
           </Field>
 
           <div className="flex items-center justify-between rounded-[12px] border border-border px-[16px] py-[14px]">
