@@ -13,8 +13,8 @@ import { LOGO_URL, sendTemplatedEmail } from "../_shared/sendEmail.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-// Must match an allowlisted Redirect URL, `www.` included — an unlisted
-// redirect_to is silently replaced with the Site URL rather than rejected.
+// The emailed link points straight at our own set-password page, so this no
+// longer needs to be a GoTrue redirect URL.
 const SITE_URL = "https://www.mutisfinancesociety.com";
 // Wording only — the real TTL is mailer_otp_exp in the project's auth config,
 // currently 86400s. Update this if that changes.
@@ -69,16 +69,19 @@ Deno.serve(async (req: Request) => {
     return ok();
   }
 
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email,
-    options: { redirectTo: `${SITE_URL}/admin/set-password` },
-  });
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({ type: "recovery", email });
 
-  if (linkError || !linkData.properties?.action_link) {
+  if (linkError || !linkData.properties?.hashed_token) {
     console.error("Could not generate a recovery link", linkError);
     return ok();
   }
+
+  // Not `action_link`, which a mail scanner would spend just by opening it —
+  // see create-invite. The set-password page spends the token on a click.
+  const resetLink = `${SITE_URL}/admin/set-password?${new URLSearchParams({
+    type: "recovery",
+    token_hash: linkData.properties.hashed_token,
+  })}`;
 
   const sent = await sendTemplatedEmail({
     to: email,
@@ -86,7 +89,7 @@ Deno.serve(async (req: Request) => {
     templateFile: "reset.html",
     params: {
       LOGO_URL,
-      ACTION_LINK: linkData.properties.action_link,
+      ACTION_LINK: resetLink,
       EXPIRY_TEXT,
     },
   });

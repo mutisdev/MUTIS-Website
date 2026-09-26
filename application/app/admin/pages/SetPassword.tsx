@@ -9,14 +9,16 @@ type Status = "idle" | "submitting" | "error" | "done";
 export function SetPassword() {
   const { session, adminName, isLoading, setAdminName } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  // Supabase appends `?type=invite` or `?type=recovery` to the redirect URL —
-  // both land here since they work identically once the magic link has
-  // established a session; only the copy differs. `welcome` is set by
+  const [searchParams, setSearchParams] = useSearchParams();
+  // create-invite and send-reset-link link here with `type` (invite or
+  // recovery) and a `token_hash`; both work identically once the token has
+  // been exchanged for a session, only the copy differs. `welcome` is set by
   // create-invite so that someone who already had an account and has just been
   // made an admin is greeted as a new admin rather than told to reset a
   // password they may never have had.
   const isInvite = searchParams.get("type") === "invite" || searchParams.get("welcome") === "1";
+  const tokenHash = searchParams.get("token_hash");
+  const [verifyStatus, setVerifyStatus] = useState<"idle" | "verifying" | "error">("idle");
 
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -30,6 +32,29 @@ export function SetPassword() {
   useEffect(() => {
     if (adminName) setName((current) => current || adminName);
   }, [adminName]);
+
+  // The token is only spent here, on a click. Mail security scanners open
+  // every link in an email as soon as it arrives, and some run the page's
+  // scripts too, so exchanging it on load would burn it before the person
+  // ever saw the email. Scanners don't press buttons.
+  const onContinue = async () => {
+    if (!tokenHash) return;
+    setVerifyStatus("verifying");
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: searchParams.get("type") === "invite" ? "invite" : "recovery",
+    });
+    if (verifyError) {
+      setVerifyStatus("error");
+      return;
+    }
+    // AuthProvider picks up the new session. Drop the spent token from the URL
+    // so a refresh doesn't offer to exchange it again.
+    const next = new URLSearchParams(searchParams);
+    next.delete("token_hash");
+    setSearchParams(next, { replace: true });
+    setVerifyStatus("idle");
+  };
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -91,10 +116,33 @@ export function SetPassword() {
     );
   }
 
-  // The magic link establishes a session automatically on load
-  // (detectSessionInUrl). No session here means the link is invalid,
-  // already used, or expired.
-  if (!session) {
+  // An unspent token takes priority over any session already in this browser:
+  // the link may be for a different account than the one signed in.
+  if (tokenHash && verifyStatus !== "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-[24px]">
+        <div className="w-full max-w-[400px] text-center">
+          <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">MUTIS</p>
+          <h1 className="mt-[8px] text-[22px] font-medium text-foreground">
+            {isInvite ? "Set up your account" : "Reset your password"}
+          </h1>
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={verifyStatus === "verifying"}
+            className="mt-[32px] w-full rounded-[10px] bg-primary px-[20px] py-[12px] text-[14px]! font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+          >
+            {verifyStatus === "verifying" ? "Checking link…" : "Continue"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No session here means there was no token, or it was invalid, already
+  // used, or expired. A failed token also lands here when someone else is
+  // signed in, rather than showing them their own account's form.
+  if (!session || verifyStatus === "error") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-[24px] text-center">
         <p className="max-w-[360px] text-[14px] leading-[1.6] text-muted-foreground">
