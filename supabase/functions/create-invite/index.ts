@@ -10,10 +10,8 @@ import { LOGO_URL, sendTemplatedEmail } from "../_shared/sendEmail.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-// Must match a Redirect URL allowlisted under Authentication > URL
-// Configuration, including the `www.` — GoTrue does not reject an
-// unlisted redirect_to, it silently substitutes the Site URL, which would
-// drop invitees on the homepage instead of the set-password form.
+// The emailed link points straight at our own set-password page (see
+// setupLink below), so this no longer needs to be a GoTrue redirect URL.
 const SITE_URL = "https://www.mutisfinancesociety.com";
 // Wording only — the real TTL is mailer_otp_exp in the project's auth config,
 // currently 86400s. Update this if that changes.
@@ -67,19 +65,10 @@ Deno.serve(async (req: Request) => {
   const email = body.email?.trim().toLowerCase();
   if (!email) return json({ error: "Email is required" }, 400);
 
-  // `welcome` marks this as a first-time setup rather than a forgotten
-  // password, so the page says "Set up your account" even on the recovery
-  // link used for the promote-an-existing-account case below. Supabase keeps
-  // the query string and appends its own params to it.
-  const redirectTo = `${SITE_URL}/admin/set-password?welcome=1`;
-
-  // Creates the auth user in the "invited" state and returns the magic link.
-  // No email leaves Supabase as a result of this call.
-  let { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "invite",
-    email,
-    options: { redirectTo },
-  });
+  // Creates the auth user in the "invited" state and returns the one-time
+  // token. No email leaves Supabase as a result of this call.
+  let linkType: "invite" | "recovery" = "invite";
+  let { data: linkData, error: linkError } = await admin.auth.admin.generateLink({ type: linkType, email });
 
   if (linkError) {
     const message = linkError.message.toLowerCase();
@@ -93,17 +82,26 @@ Deno.serve(async (req: Request) => {
     // given access. A recovery link does the same job: it lands on the same
     // page and lets them set a password and their name. It also hands back
     // the user, so there's no need to page through listUsers to find them.
-    ({ data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: { redirectTo },
-    }));
+    linkType = "recovery";
+    ({ data: linkData, error: linkError } = await admin.auth.admin.generateLink({ type: linkType, email }));
     if (linkError) return json({ error: linkError.message }, 500);
   }
 
-  const actionLink = linkData?.properties?.action_link;
+  const tokenHash = linkData?.properties?.hashed_token;
   const invitedUser = linkData?.user;
-  if (!actionLink || !invitedUser) return json({ error: "Could not generate an invite link." }, 500);
+  if (!tokenHash || !invitedUser) return json({ error: "Could not generate an invite link." }, 500);
+
+  // Never email `action_link`: it consumes the one-time token on a plain GET,
+  // and mail security scanners (Microsoft 365 Safe Links and the like) open
+  // every link within seconds of delivery, so the invitee would find it
+  // already used. This link only lands on our page, which spends the token
+  // when the person presses a button there. `welcome` makes the page say
+  // "Set up your account" even for the recovery token used above.
+  const setupLink = `${SITE_URL}/admin/set-password?${new URLSearchParams({
+    welcome: "1",
+    type: linkType,
+    token_hash: tokenHash,
+  })}`;
 
   // Grant admin access up front so they land on the dashboard rather than the
   // "access pending" screen once they've set a password.
@@ -123,7 +121,7 @@ Deno.serve(async (req: Request) => {
     templateFile: "invite.html",
     params: {
       LOGO_URL,
-      ACTION_LINK: actionLink,
+      ACTION_LINK: setupLink,
       INVITER_NAME: callerAdminRow.full_name ?? callerAdminRow.email ?? "A MUTIS admin",
       EXPIRY_TEXT,
     },
