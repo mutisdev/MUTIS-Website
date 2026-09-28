@@ -428,6 +428,11 @@ static_files = ["./functions/_shared/email_templates/*.html"]
 verify_jwt = false
 static_files = ["./functions/_shared/email_templates/*.html"]
 
+[functions.event-ics]
+# Opened straight from an email with no session; returns only what the public
+# event page already shows.
+verify_jwt = false
+
 [functions.create-invite]
 # verify_jwt stays on; the function additionally checks the caller has an
 # admin_users row before creating anyone's account.
