@@ -11,7 +11,9 @@ import sanitizeHtml from "npm:sanitize-html@2.17.0";
 
 const BREVO_URL = "https://api.brevo.com/v3/smtp/email";
 const SENDER = { name: "MUTIS", email: "info@mutisfinancesociety.com" };
-const SITE_URL = "https://mutisfinancesociety.com";
+/** Exported because event-ics builds the same event links for the calendar
+ * entry it serves. */
+export const SITE_URL = "https://mutisfinancesociety.com";
 /** Exported because every template's header uses it, including the auth-link
  * emails that don't go through eventEmailParams. */
 export const LOGO_URL =
@@ -162,6 +164,9 @@ export function eventEmailParams(event: EmailEvent, attendeeName: string): Templ
     EVENT_TIME: event.ends_at ? `${startTime} – ${timeFormat.format(new Date(event.ends_at))}` : startTime,
     EVENT_LOCATION: event.location ?? "",
     EVENT_URL: `${SITE_URL}/events/${event.id}/signup`,
+    // A link rather than an attached file: Gmail and Outlook both strip
+    // calendar attachments from bulk senders, and a link always survives.
+    ICS_URL: `${Deno.env.get("SUPABASE_URL")}/functions/v1/event-ics?event=${event.id}`,
   };
 }
 

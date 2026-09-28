@@ -58,11 +58,16 @@
                 </tr>
               </table>
 
-              <!-- CTA -->
+              <!-- CTAs. Separate cells with a spacer between so the buttons sit
+                   side by side in Outlook, which ignores inline-block margins. -->
               <table role="presentation" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="border-radius:6px; background-color:#00B4D8;">
                     <a href="{{EVENT_URL}}" style="display:inline-block; padding:12px 28px; font-size:14px; font-weight:bold; color:#0B2545; text-decoration:none;">View event details</a>
+                  </td>
+                  <td style="width:12px;">&nbsp;</td>
+                  <td style="border-radius:6px; border:1px solid #0B2545;">
+                    <a href="{{ICS_URL}}" style="display:inline-block; padding:11px 27px; font-size:14px; font-weight:bold; color:#0B2545; text-decoration:none;">Add to calendar</a>
                   </td>
                 </tr>
               </table>
