@@ -139,6 +139,10 @@ export const router = createBrowserRouter([
                 lazy: () => import("./admin/pages/Submissions").then((m) => ({ Component: m.Submissions })),
               },
               {
+                path: "feedback",
+                lazy: () => import("./admin/pages/Feedback").then((m) => ({ Component: m.Feedback })),
+              },
+              {
                 path: "members",
                 lazy: () => import("./admin/pages/Members").then((m) => ({ Component: m.Members })),
               },

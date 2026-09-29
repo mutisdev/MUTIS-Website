@@ -770,6 +770,24 @@ export type Database = {
         }
         Relationships: []
       }
+      page_views: {
+        Row: {
+          created_at: string
+          path: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          path: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          path?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
       past_speakers: {
         Row: {
           created_at: string
@@ -1201,6 +1219,29 @@ export type Database = {
       }
     }
     Functions: {
+      attendance_feedback_summary: {
+        Args: {
+          p_comment_limit?: number
+          p_event_id?: string
+          p_from?: string
+          p_scope?: string
+          p_to?: string
+        }
+        Returns: {
+          average_rating: number
+          event_id: string
+          event_title: string
+          mode: string
+          range_end: string
+          range_start: string
+          rating_distribution: Json
+          recent_comments: Json
+          response_rate: number
+          submissions_in_range: number
+          submissions_total: number
+          unique_visitors: number
+        }[]
+      }
       etoro_get_secret: { Args: { secret_name: string }; Returns: string }
       etoro_set_secret: {
         Args: { secret_name: string; secret_value: string }

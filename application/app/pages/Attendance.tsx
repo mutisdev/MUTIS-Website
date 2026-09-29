@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
+import { usePageView } from "@/app/hooks/usePageView";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
@@ -26,6 +27,9 @@ const RATINGS = [1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }));
  */
 export function Attendance() {
   useReveal();
+  // Counts anonymous visits so the admin feedback summary can show a response
+  // rate. The literal is the tracked path the server allows, not a route lookup.
+  usePageView("/attendance");
   const { settings } = useSiteSettings();
   const { status, error, submitting, fail, succeed, reset, onFormInput } = useFormStatus();
   const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
