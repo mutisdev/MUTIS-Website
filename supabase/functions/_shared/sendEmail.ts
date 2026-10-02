@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import sanitizeHtml from "npm:sanitize-html@2.17.0";
+import { tokenizeVideoDetails } from "./eventVideo.ts";
 
 const BREVO_URL = "https://api.brevo.com/v3/smtp/email";
 const SENDER = { name: "MUTIS", email: "info@mutisfinancesociety.com" };
@@ -95,6 +96,49 @@ export function emailSafeHtml(html: string | null | undefined): SafeHtml {
   return { html: clean.replace(/(<li[^>]*>\s*<p style=")margin:0 0 12px;/g, "$1margin:0;") };
 }
 
+/**
+ * An event's video conference details as the "Joining online" block both the
+ * confirmation and the reminders carry. The stored text is plain text an admin
+ * typed or pasted, so it is escaped in full and only https links are turned
+ * into links — anything else (an <a> pasted from a web page, a mailto:, a bare
+ * www.) stays inert text. Newlines become <br> so a pasted meeting ID,
+ * passcode and dial-in each keep their own line.
+ *
+ * Returns an empty SafeHtml when there is nothing to show, which is what makes
+ * {{VIDEO_BLOCK}} disappear entirely for in-person events rather than leaving
+ * an empty heading behind.
+ */
+export function videoDetailsBlock(bodyText: string | null | undefined): SafeHtml {
+  const text = (bodyText ?? "").trim();
+  if (!text) return { html: "" };
+
+  const body = tokenizeVideoDetails(text)
+    .map((token) =>
+      token.type === "link"
+        ? `<a href="${escapeHtml(token.value)}" style="color:#0c6a8a; text-decoration:underline; word-break:break-all;">${escapeHtml(token.value)}</a>`
+        : escapeHtml(token.value).replaceAll("\n", "<br>")
+    )
+    .join("");
+
+  // A tinted card with an accent rule rather than a coloured fill, so no text
+  // sits on the accent. #0c6a8a is the design brief's deeper cyan taken two
+  // steps darker: the brief's own #0e7fa3 is 4.58:1 on white but only 4.32:1 on
+  // this card, which fails AA for 14px text — #0c6a8a is 5.75:1 on it. The links
+  // are underlined too, so colour is never the only signal. Tables, not divs,
+  // because Outlook ignores padding and borders on a div.
+  return {
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px; background-color:#f4f9fc; border-left:4px solid #0c6a8a; border-radius:6px;">
+        <tr>
+          <td style="padding:18px 22px;">
+            <h2 style="margin:0 0 10px; font-size:16px; line-height:1.4; color:#0B2545;">Joining online</h2>
+            <p style="margin:0; font-size:14px; line-height:1.7; color:#333333;">${body}</p>
+          </td>
+        </tr>
+      </table>`,
+  };
+}
+
 export async function sendTemplatedEmail({
   to,
   subject,
@@ -154,8 +198,19 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", {
 const timeFormat = new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, hour: "numeric", minute: "2-digit" });
 
 /** The template params both emails share. Dates are shown in UK time: Edge
- * Functions run in UTC. */
-export function eventEmailParams(event: EmailEvent, attendeeName: string): TemplateParams {
+ * Functions run in UTC, and Intl handles British Summer Time for us, so an
+ * event in August reads as BST even when the reminder is sent in UTC-time
+ * October.
+ *
+ * `videoDetails` is the raw event_video_details.body_text, passed only when the
+ * event has the block and it is switched on. Omitting it renders
+ * {{VIDEO_BLOCK}} as nothing, which is how every in-person event's email stays
+ * byte-for-byte what it was before this existed. */
+export function eventEmailParams(
+  event: EmailEvent,
+  attendeeName: string,
+  videoDetails?: string | null
+): TemplateParams {
   const start = new Date(event.starts_at);
   const startTime = timeFormat.format(start);
   return {
@@ -166,6 +221,7 @@ export function eventEmailParams(event: EmailEvent, attendeeName: string): Templ
     EVENT_DATE: dateFormat.format(start),
     EVENT_TIME: event.ends_at ? `${startTime} – ${timeFormat.format(new Date(event.ends_at))}` : startTime,
     EVENT_LOCATION: event.location ?? "",
+    VIDEO_BLOCK: videoDetailsBlock(videoDetails),
     EVENT_URL: `${SITE_URL}/events/${event.id}/signup`,
     // A link rather than an attached file: Gmail and Outlook both strip
     // calendar attachments from bulk senders, and a link always survives.

@@ -22,6 +22,14 @@ import {
   type QuestionDraft,
 } from "../lib/eventQuestions";
 import { Link } from "react-router";
+import { useAuth } from "../AuthProvider";
+import { MAX_VIDEO_DETAILS_CHARS, validateVideoDetails } from "@shared/eventVideo";
+import { VideoDetailsPreview } from "../components/VideoDetailsPreview";
+import {
+  loadEventVideoDetails,
+  saveEventVideoDetails,
+  type EventVideoDetailsRow,
+} from "../lib/eventVideoDetails";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 type EventQuestionRow = Database["public"]["Tables"]["event_questions"]["Row"];
@@ -40,6 +48,10 @@ type FormState = {
   requires_application: boolean;
   /** Staged question drafts; only written when the event is saved. */
   questions: QuestionDraft[];
+  /** Video conference details. Staged like the questions, and written to
+   * event_video_details — never to the event row — when the event is saved. */
+  video_enabled: boolean;
+  video_body: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -55,6 +67,8 @@ const EMPTY_FORM: FormState = {
   is_published: true,
   requires_application: false,
   questions: [],
+  video_enabled: false,
+  video_body: "",
 };
 
 function parseTags(input: string): string[] {
@@ -73,6 +87,7 @@ function formatDateTime(iso: string) {
 
 export function Events() {
   const toast = useToast();
+  const { session } = useAuth();
   const { insertRow, updateRow, deleteRow } = useAdminMutation();
 
   const [rows, setRows] = usePageCache<EventRow[]>("admin:events:rows", []);
@@ -104,6 +119,11 @@ export function Events() {
   const [savedQuestions, setSavedQuestions] = useState<EventQuestionRow[]>([]);
   const [questionErrors, setQuestionErrors] = useState<Record<string, string>>({});
   const [questionFormError, setQuestionFormError] = useState("");
+  // The stored video block as it was when the drawer opened: the audit log's
+  // before-snapshot, and the text to fall back on when the toggle is switched
+  // off without the box having been touched.
+  const [savedVideo, setSavedVideo] = useState<EventVideoDetailsRow | null>(null);
+  const [videoError, setVideoError] = useState("");
 
   const fetchRows = async () => {
     const [eventsRes, statsRes, applicationsRes] = await Promise.all([
@@ -171,11 +191,13 @@ export function Events() {
   const resetQuestionErrors = () => {
     setQuestionErrors({});
     setQuestionFormError("");
+    setVideoError("");
   };
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
     setSavedQuestions([]);
+    setSavedVideo(null);
     resetQuestionErrors();
     setEditing("new");
   };
@@ -187,20 +209,23 @@ export function Events() {
   // close, even if the admin typed nothing.
   const openEdit = async (row: EventRow) => {
     let questionRows: EventQuestionRow[] = [];
+    let videoRow: EventVideoDetailsRow | null = null;
     try {
-      // Loaded whether or not application mode is currently on: the toggle hides
-      // questions, it never deletes them, so an admin turning it back on must
-      // find them still here.
-      questionRows = await loadEventQuestions(row.id);
+      // Both loaded whether or not their toggle is currently on: a toggle hides
+      // its content, it never deletes it, so an admin turning one back on must
+      // find everything still here.
+      [questionRows, videoRow] = await Promise.all([loadEventQuestions(row.id), loadEventVideoDetails(row.id)]);
     } catch (err) {
-      console.error("Failed to load application questions", err);
-      // Don't open at all: an empty builder would wrongly suggest this event has
-      // no questions, and the admin might re-add ones that already exist.
-      toast.error("Could not load this event's application questions. Please try again.");
+      console.error("Failed to load application questions or video details", err);
+      // Don't open at all: an empty builder or an empty joining block would
+      // wrongly suggest this event has neither, and the admin might re-add what
+      // already exists — or worse, save an empty box over a working link.
+      toast.error("Could not load this event's application questions or video details. Please try again.");
       return;
     }
 
     setSavedQuestions(questionRows);
+    setSavedVideo(videoRow);
     resetQuestionErrors();
     setForm({
       title: row.title,
@@ -215,6 +240,8 @@ export function Events() {
       is_published: row.is_published,
       requires_application: row.requires_application,
       questions: draftsFromRows(questionRows),
+      video_enabled: videoRow?.is_enabled ?? false,
+      video_body: videoRow?.body_text ?? "",
     });
     setEditing(row);
   };
@@ -242,6 +269,17 @@ export function Events() {
       }
     }
 
+    // The joining block's own rules, and only while the toggle is on — text kept
+    // behind a switched-off toggle needn't be valid.
+    if (form.video_enabled) {
+      const message = validateVideoDetails(form.video_body);
+      if (message) {
+        setVideoError(message);
+        toast.error(message);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const values = {
@@ -260,13 +298,16 @@ export function Events() {
       // The event row goes through updateRow/insertRow so the audit log picks up
       // the requires_application change in its before/after snapshot for free.
       // Questions are written afterwards, against the saved event's id.
+      const videoState = { enabled: form.video_enabled, bodyText: form.video_body };
       if (editing === "new") {
         const created = await insertRow("events", values);
         await saveQuestionDrafts(created.id, form.questions, savedQuestions, { insertRow, updateRow, deleteRow });
+        await saveEventVideoDetails(created.id, videoState, null, session);
         toast.success("Event created.");
       } else if (editing) {
         await updateRow("events", editing.id, values, editing);
         await saveQuestionDrafts(editing.id, form.questions, savedQuestions, { insertRow, updateRow, deleteRow });
+        await saveEventVideoDetails(editing.id, videoState, savedVideo, session);
         toast.success("Event updated.");
       }
       setEditing(null);
@@ -514,6 +555,77 @@ export function Events() {
               )
             )}
           </div>
+          {/*
+            Video conference details. Off by default and off for every existing
+            event. The text lives in event_video_details, never on the event row,
+            and reaches nobody except a confirmed attendee's email — it is not on
+            the public event page, not in the public events API, and not in the
+            on-screen confirmation. Turning the toggle off keeps the text.
+          */}
+          <div className="flex flex-col gap-[14px] rounded-[12px] border border-border px-[16px] py-[14px]">
+            <div className="flex items-center justify-between gap-[12px]">
+              <div className="min-w-0">
+                <span className="text-[13px] font-medium text-foreground">Video conference details</span>
+                <p className="mt-[4px] text-[11px] leading-[1.6] text-muted-foreground">
+                  Teams, Zoom, Meet — the joining link plus any meeting ID, passcode or notes. Emailed to
+                  confirmed attendees only, in the confirmation and in the reminders. Never shown on the website.
+                </p>
+              </div>
+              <PublishToggle
+                checked={form.video_enabled}
+                label={form.video_enabled ? "Video details on" : "Video details off"}
+                onChange={(v) => {
+                  setVideoError("");
+                  setForm((f) => ({ ...f, video_enabled: v }));
+                }}
+              />
+            </div>
+
+            {form.video_enabled ? (
+              <div className="flex flex-col gap-[10px]">
+                <textarea
+                  rows={6}
+                  value={form.video_body}
+                  maxLength={MAX_VIDEO_DETAILS_CHARS}
+                  onChange={(e) => {
+                    setVideoError("");
+                    setForm((f) => ({ ...f, video_body: e.target.value }));
+                  }}
+                  placeholder={"https://teams.microsoft.com/l/meetup-join/...\n\nMeeting ID: 123 456 789\nPasscode: 4821\n\nPlease join with your camera on."}
+                  aria-label="Video conference details"
+                  aria-invalid={videoError ? true : undefined}
+                  aria-describedby="video-details-help"
+                  className={`w-full resize-y rounded-[10px] border bg-input px-[14px] py-[12px] text-[14px]! leading-[1.6] text-foreground outline-hidden transition-colors focus:border-accent ${videoError ? "border-destructive" : "border-input"}`}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-[8px]">
+                  <p id="video-details-help" className="text-[11px] text-muted-foreground">
+                    Plain text. Only links starting with <code>https://</code> become clickable; at least one is
+                    required.
+                  </p>
+                  <p
+                    className={`text-[11px] tabular-nums ${
+                      form.video_body.length > MAX_VIDEO_DETAILS_CHARS - 50 ? "text-destructive" : "text-muted-foreground"
+                    }`}
+                  >
+                    {form.video_body.length} / {MAX_VIDEO_DETAILS_CHARS}
+                  </p>
+                </div>
+                {videoError && (
+                  <p role="alert" className="text-[12px] text-destructive">
+                    {videoError}
+                  </p>
+                )}
+                <VideoDetailsPreview bodyText={form.video_body} />
+              </div>
+            ) : (
+              form.video_body.trim().length > 0 && (
+                <p className="text-[11px] leading-[1.6] text-muted-foreground">
+                  The joining details are kept, just not sent to anyone. Turn this back on to use them again.
+                </p>
+              )
+            )}
+          </div>
+
           <div className="flex items-center justify-between rounded-[12px] border border-border px-[16px] py-[14px]">
             <span className="text-[13px] font-medium text-foreground">Published</span>
             <PublishToggle checked={form.is_published} onChange={(v) => setForm({ ...form, is_published: v })} />

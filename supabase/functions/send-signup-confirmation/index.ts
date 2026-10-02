@@ -48,16 +48,49 @@ Deno.serve(async (req: Request) => {
 
   const { data: event, error: eventError } = await admin
     .from("events")
-    .select("id, title, description, location, starts_at, ends_at")
+    .select("id, title, description, location, starts_at, ends_at, requires_application")
     .eq("id", signup.event_id)
     .maybeSingle();
+
+  // The joining block, for events that have one and have it switched on. Read
+  // from event_video_details with the service role: no anon policy exists on
+  // that table, which is what keeps the link out of the public events API and
+  // off every public page.
+  //
+  // A null here is not a failure — most events are in person — so unlike the
+  // event lookup it doesn't stop the confirmation going out. An error is
+  // different: sending a confirmation with the joining block silently missing
+  // would look complete and be wrong, so release the claim and let a retry
+  // handle it.
+  let videoDetails: string | null = null;
+  if (event) {
+    const { data: video, error: videoError } = await admin
+      .from("event_video_details")
+      .select("body_text, is_enabled")
+      .eq("event_id", event.id)
+      .maybeSingle();
+    if (videoError) {
+      console.error("Failed to load video details for signup", signup.id, videoError);
+      await admin.from("event_signups").update({ confirmation_sent_at: null }).eq("id", signup.id);
+      return json({ sent: false, reason: "video_details_unavailable" }, 502);
+    }
+    // TODO(application flow): an event with requires_application = true never
+    // produces an event_signups row today — the public page swaps the one-click
+    // signup for the application form, and an accepted application is not yet
+    // turned into a confirmed sign-up. So this branch is unreachable, and is
+    // here to make sure it stays safe when that flow is built: a joining link
+    // must not go out until the person actually has a place, and acceptance
+    // will need its own email carrying the block. Withholding it is the
+    // behaviour-preserving choice in the meantime.
+    videoDetails = event.requires_application ? null : (video?.is_enabled ? video.body_text : null);
+  }
 
   const sent = !eventError && !!event &&
     (await sendTemplatedEmail({
       to: signup.email,
       subject: `You're signed up: ${event.title}`,
       templateFile: "confirmation.html",
-      params: eventEmailParams(event, signup.name),
+      params: eventEmailParams(event, signup.name, videoDetails),
     }));
 
   if (!sent) {

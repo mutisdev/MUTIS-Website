@@ -662,6 +662,45 @@ export type Database = {
           },
         ]
       }
+      event_video_details: {
+        Row: {
+          body_text: string
+          created_at: string
+          event_id: string
+          is_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          body_text: string
+          created_at?: string
+          event_id: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string
+          created_at?: string
+          event_id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_video_details_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "event_attendance_stats"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "event_video_details_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           capacity: number | null
@@ -1116,6 +1155,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      reminders_sent: {
+        Row: {
+          attempts: number
+          created_at: string
+          event_starts_at: string
+          id: string
+          last_attempt_at: string
+          last_error: string | null
+          reminder_type: string
+          sent_at: string | null
+          signup_id: string
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          event_starts_at: string
+          id?: string
+          last_attempt_at?: string
+          last_error?: string | null
+          reminder_type: string
+          sent_at?: string | null
+          signup_id: string
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          event_starts_at?: string
+          id?: string
+          last_attempt_at?: string
+          last_error?: string | null
+          reminder_type?: string
+          sent_at?: string | null
+          signup_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_sent_signup_id_fkey"
+            columns: ["signup_id"]
+            isOneToOne: false
+            referencedRelation: "event_signups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_settings: {
         Row: {
