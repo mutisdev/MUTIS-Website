@@ -816,6 +816,93 @@
 }
 
 /* ==========================================================
+   Event application mode (requires_application events)
+   The CV row on the form, and the receipt shown after submitting.
+   Printing is handled separately in mutis-print.css.
+   ========================================================== */
+
+/* Chosen-file summary under the CV input: name and size, as the brief requires. */
+.cv-chosen {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  font-size: 13px; line-height: 1.5; margin: 0;
+  color: var(--ink-text, #f0f4f8);
+}
+.cv-chosen-name { font-weight: 600; word-break: break-all; }
+.cv-chosen-size { font-size: 12px; color: var(--ink-soft, #3c4a66); }
+
+.application-receipt {
+  margin-top: 24px; max-width: 640px;
+  border: 1px solid var(--hair, rgba(2,25,103,0.14));
+  background: var(--surface-alt, #f2f3ee);
+  padding: 28px;
+}
+.application-receipt-head {
+  display: flex; flex-wrap: wrap; align-items: flex-start;
+  justify-content: space-between; gap: 16px;
+}
+.application-receipt h2 { margin: 0; }
+.application-receipt-code {
+  display: flex; flex-direction: column; gap: 4px; margin: 0; text-align: right;
+}
+.application-receipt-code span {
+  font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--ink-soft, #3c4a66);
+}
+.application-receipt-code strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 20px; letter-spacing: 0.08em;
+  /* Not the cyan accent: this code gets transcribed by hand, so it takes the
+     highest-contrast ink we have (14:1) and is distinguished by the monospace
+     face and weight rather than by colour alone. */
+  color: var(--ink-text, #f0f4f8);
+}
+/* The "not a confirmed place" line. Deliberately the most prominent thing
+   after the heading — it's the one sentence an applicant must not miss. */
+.application-receipt-notice {
+  margin: 20px 0 0; padding: 14px 16px;
+  font-size: 15px; line-height: 1.6; font-weight: 600;
+  color: var(--ink-text, #f0f4f8);
+  border-left: 3px solid var(--pm-accent, #15b8e1);
+  background: var(--pm-accent-dim, rgba(21,184,225,0.12));
+}
+.application-receipt-subhead {
+  margin: 28px 0 0;
+  font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--ink-soft, #3c4a66);
+}
+.application-receipt-details, .application-receipt-answers { margin: 16px 0 0; }
+.application-receipt-details > div, .application-receipt-answers > div {
+  padding: 10px 0;
+  border-top: 1px solid var(--hair-soft, rgba(2,25,103,0.07));
+}
+.application-receipt-details dt, .application-receipt-answers dt {
+  font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-soft, #3c4a66); margin-bottom: 4px;
+}
+.application-receipt-details dd, .application-receipt-answers dd {
+  margin: 0; font-size: 15px; line-height: 1.65;
+  color: var(--ink-text, #f0f4f8); word-break: break-word;
+}
+/* Answers can be paragraphs; keep the applicant's line breaks. */
+.application-receipt-answers dd { white-space: pre-wrap; }
+.application-receipt-dim { color: var(--ink-soft, #3c4a66); }
+.application-receipt-email {
+  margin: 24px 0 0; font-size: 13px; line-height: 1.6; color: var(--ink-soft, #3c4a66);
+}
+.application-receipt-actions {
+  display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px;
+}
+
+@media (max-width: 640px) {
+  .application-receipt { padding: 20px; }
+  /* Stacked, left-aligned: the reference code reads badly right-aligned
+     under its own heading on a narrow screen. */
+  .application-receipt-head { flex-direction: column; gap: 12px; }
+  .application-receipt-code { text-align: left; }
+  .application-receipt-actions .btn { width: 100%; }
+}
+
+/* ==========================================================
    Responsive
    ========================================================== */
 

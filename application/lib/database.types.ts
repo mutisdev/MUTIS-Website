@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_users: {
@@ -142,6 +167,51 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      application_answers: {
+        Row: {
+          answer_text: string
+          application_id: string
+          created_at: string
+          id: string
+          question_id: string | null
+          question_position: number
+          question_prompt: string
+        }
+        Insert: {
+          answer_text: string
+          application_id: string
+          created_at?: string
+          id?: string
+          question_id?: string | null
+          question_position: number
+          question_prompt: string
+        }
+        Update: {
+          answer_text?: string
+          application_id?: string
+          created_at?: string
+          id?: string
+          question_id?: string | null
+          question_position?: number
+          question_prompt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_answers_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "event_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "event_questions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       articles: {
         Row: {
@@ -448,43 +518,108 @@ export type Database = {
           },
         ]
       }
-      vercel_analytics_settings: {
+      event_applications: {
         Row: {
-          id: boolean
-          is_configured: boolean
-          project_id: string | null
-          team_id: string | null
-          updated_at: string
-          updated_by: string | null
+          cv_file_name: string
+          cv_path: string | null
+          cv_size_bytes: number
+          email: string
+          event_id: string
+          id: string
+          name: string
+          reference_code: string
+          status: string
+          submitted_at: string
         }
         Insert: {
-          id?: boolean
-          is_configured?: boolean
-          project_id?: string | null
-          team_id?: string | null
-          updated_at?: string
-          updated_by?: string | null
+          cv_file_name: string
+          cv_path?: string | null
+          cv_size_bytes: number
+          email: string
+          event_id: string
+          id?: string
+          name: string
+          reference_code: string
+          status?: string
+          submitted_at?: string
         }
         Update: {
-          id?: boolean
-          is_configured?: boolean
-          project_id?: string | null
-          team_id?: string | null
-          updated_at?: string
-          updated_by?: string | null
+          cv_file_name?: string
+          cv_path?: string | null
+          cv_size_bytes?: number
+          email?: string
+          event_id?: string
+          id?: string
+          name?: string
+          reference_code?: string
+          status?: string
+          submitted_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "vercel_analytics_settings_updated_by_fkey"
-            columns: ["updated_by"]
+            foreignKeyName: "event_applications_event_id_fkey"
+            columns: ["event_id"]
             isOneToOne: false
-            referencedRelation: "admin_users"
-            referencedColumns: ["user_id"]
+            referencedRelation: "event_attendance_stats"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "event_applications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_questions: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          options: Json
+          position: number
+          prompt: string
+          question_type: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          options?: Json
+          position?: number
+          prompt: string
+          question_type: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          options?: Json
+          position?: number
+          prompt?: string
+          question_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_questions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "event_attendance_stats"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "event_questions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
           },
         ]
       }
       event_signups: {
         Row: {
+          confirmation_sent_at: string | null
           created_at: string
           email: string
           event_id: string
@@ -493,6 +628,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          confirmation_sent_at?: string | null
           created_at?: string
           email: string
           event_id: string
@@ -501,6 +637,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          confirmation_sent_at?: string | null
           created_at?: string
           email?: string
           event_id?: string
@@ -535,6 +672,8 @@ export type Database = {
           id: string
           is_published: boolean
           location: string
+          reminder_sent_at: string | null
+          requires_application: boolean
           signup_enabled: boolean
           starts_at: string
           tags: string[]
@@ -550,6 +689,8 @@ export type Database = {
           id?: string
           is_published?: boolean
           location: string
+          reminder_sent_at?: string | null
+          requires_application?: boolean
           signup_enabled?: boolean
           starts_at: string
           tags?: string[]
@@ -565,6 +706,8 @@ export type Database = {
           id?: string
           is_published?: boolean
           location?: string
+          reminder_sent_at?: string | null
+          requires_application?: boolean
           signup_enabled?: boolean
           starts_at?: string
           tags?: string[]
@@ -1157,6 +1300,41 @@ export type Database = {
         }
         Relationships: []
       }
+      vercel_analytics_settings: {
+        Row: {
+          id: boolean
+          is_configured: boolean
+          project_id: string | null
+          team_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          is_configured?: boolean
+          project_id?: string | null
+          team_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          is_configured?: boolean
+          project_id?: string | null
+          team_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vercel_analytics_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       dashboard_attendance_totals: {
@@ -1196,6 +1374,16 @@ export type Database = {
           events_attended: number | null
           events_signed_up: number | null
           member_id: string | null
+        }
+        Insert: {
+          events_attended?: never
+          events_signed_up?: never
+          member_id?: string | null
+        }
+        Update: {
+          events_attended?: never
+          events_signed_up?: never
+          member_id?: string | null
         }
         Relationships: []
       }
@@ -1242,10 +1430,9 @@ export type Database = {
           unique_visitors: number
         }[]
       }
-      etoro_get_secret: { Args: { secret_name: string }; Returns: string }
-      etoro_set_secret: {
-        Args: { secret_name: string; secret_value: string }
-        Returns: undefined
+      consume_application_rate_limit: {
+        Args: { p_bucket: string; p_limit: number; p_window_seconds: number }
+        Returns: boolean
       }
       dashboard_signup_trend: {
         Args: { p_bucket?: string; p_days?: number }
@@ -1255,6 +1442,12 @@ export type Database = {
           member_signups: number
         }[]
       }
+      etoro_get_secret: { Args: { secret_name: string }; Returns: string }
+      etoro_set_secret: {
+        Args: { secret_name: string; secret_value: string }
+        Returns: undefined
+      }
+      generate_application_reference: { Args: never; Returns: string }
       record_diversity_answers: {
         Args: {
           p_contextual_offer_eligible: string
@@ -1272,6 +1465,19 @@ export type Database = {
           value: string
           visitors: number
         }[]
+      }
+      submit_event_application: {
+        Args: {
+          p_answers: Json
+          p_application_id: string
+          p_cv_file_name: string
+          p_cv_path: string
+          p_cv_size_bytes: number
+          p_email: string
+          p_event_id: string
+          p_name: string
+        }
+        Returns: Json
       }
     }
     Enums: {
@@ -1401,6 +1607,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

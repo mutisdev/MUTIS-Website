@@ -9,6 +9,16 @@ const STATUS_STYLES: Record<string, string> = {
   insert: "border-accent/40 text-accent",
   update: "border-border text-muted-foreground",
   delete: "border-destructive/40 text-destructive",
+  // Reads worth recording (an admin opening an applicant's CV).
+  view: "border-border text-muted-foreground",
+  // Event application statuses. `accepted` gets the accent rather than a green
+  // of its own, so the admin panel keeps to one highlight colour; `waitlisted`
+  // stays neutral because it isn't a decision yet. The word itself carries the
+  // meaning, so none of this relies on colour alone.
+  pending: "border-border text-muted-foreground",
+  accepted: "border-accent/40 text-accent",
+  waitlisted: "border-border text-foreground",
+  rejected: "border-destructive/40 text-destructive",
 };
 
 export function StatusBadge({ status }: { status: string }) {

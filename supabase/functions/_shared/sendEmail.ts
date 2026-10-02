@@ -20,7 +20,10 @@ export const LOGO_URL =
   "https://ktleyfwpcuyvvyxpvipp.supabase.co/storage/v1/object/public/brand_assets/MUTISLogo.png";
 const TIME_ZONE = "Europe/London";
 
-const escapeHtml = (value: string) =>
+/** Exported because submit-application builds a repeating answers table as one
+ * SafeHtml value: renderTemplate only escapes scalars, and emailSafeHtml is for
+ * the admin rich-text editor's markup, not for an applicant's plain text. */
+export const escapeHtml = (value: string) =>
   value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")

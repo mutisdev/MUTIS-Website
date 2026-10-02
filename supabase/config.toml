@@ -417,6 +417,17 @@ enabled = true
 # Called by anonymous visitors; protection comes from the reCAPTCHA check inside.
 verify_jwt = false
 
+[functions.submit-application]
+# Called by anonymous visitors; protection comes from the reCAPTCHA check and
+# the rate limiter inside. Sends the applicant their receipt, so it needs the
+# email templates.
+verify_jwt = false
+static_files = ["./functions/_shared/email_templates/*.html"]
+
+[functions.purge-event-cvs]
+# Called daily by pg_cron; authorised by the x-webhook-secret header checked inside.
+verify_jwt = false
+
 [functions.send-signup-confirmation]
 # Called by the event_signups insert trigger via pg_net; authorised by the
 # x-webhook-secret header checked inside.

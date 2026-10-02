@@ -19,7 +19,9 @@ export function AuditLog() {
   const [rows, setRows] = usePageCache<LogRow[]>("admin:auditLog:rows", []);
   const [loading, setLoading] = useState(!hasCached("admin:auditLog:rows"));
   const [tableFilter, setTableFilter] = usePageCache("admin:auditLog:tableFilter", "all");
-  const [actionFilter, setActionFilter] = usePageCache<"all" | "insert" | "update" | "delete">("admin:auditLog:actionFilter", "all");
+  // 'view' covers reads worth recording — currently an admin opening an
+  // applicant's CV (see the event_applications migration).
+  const [actionFilter, setActionFilter] = usePageCache<"all" | "insert" | "update" | "delete" | "view">("admin:auditLog:actionFilter", "all");
   const [search, setSearch] = usePageCache("admin:auditLog:search", "");
   const [detail, setDetail] = useState<LogRow | null>(null);
 
@@ -85,6 +87,7 @@ export function AuditLog() {
           <option value="insert">Insert</option>
           <option value="update">Update</option>
           <option value="delete">Delete</option>
+          <option value="view">View</option>
         </select>
       </div>
 

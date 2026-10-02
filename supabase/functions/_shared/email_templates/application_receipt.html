@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Application Received</title>
+</head>
+<!--
+  The same receipt the applicant sees on screen. Deliberately NOT a booking
+  confirmation: nothing here says they have a place, because nobody has read
+  their answers yet.
+
+  There is no CV link and no attachment anywhere in this template — only
+  {{CV_FILE_NAME}} — so a forwarded or intercepted receipt can't reach the PDF.
+  The CV is only ever reachable through an admin's short-lived signed URL.
+-->
+<body style="margin:0; padding:0; background-color:#f4f4f7; font-family:Arial, Helvetica, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden; max-width:600px; width:100%;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#0B2545; padding:28px 32px;" align="left">
+              <img src="{{LOGO_URL}}" alt="MUTIS" height="36" style="display:block; border:0;">
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+              <h1 style="margin:0 0 12px; font-size:22px; color:#0B2545;">Application received</h1>
+              <p style="margin:0 0 20px; font-size:15px; line-height:1.6; color:#333333;">
+                Hi {{APPLICANT_NAME}},<br><br>
+                Thanks for applying for <strong>{{EVENT_NAME}}</strong>. This email is your receipt —
+                keep it for your records.
+              </p>
+
+              <!-- The honest bit, said plainly and early. -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fff8e6; border-left:3px solid #e0a000; border-radius:4px; margin-bottom:24px;">
+                <tr>
+                  <td style="padding:14px 18px; font-size:14px; line-height:1.6; color:#5c4400;">
+                    Your answers will be reviewed. This is not a confirmed place.
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Reference code -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0B2545; border-radius:6px; margin-bottom:24px;">
+                <tr>
+                  <td style="padding:18px 24px;" align="center">
+                    <p style="margin:0 0 6px; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#9ec1d4;">Your reference</p>
+                    <p style="margin:0; font-size:24px; font-weight:bold; letter-spacing:0.08em; color:#ffffff; font-family:'Courier New', Courier, monospace;">{{REFERENCE_CODE}}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- What we have on file -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7; border-radius:6px; margin-bottom:24px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding:6px 0; font-size:14px; color:#666666; width:110px;">Event</td>
+                        <td style="padding:6px 0; font-size:14px; color:#0B2545; font-weight:bold;">{{EVENT_NAME}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0; font-size:14px; color:#666666;">Date</td>
+                        <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{EVENT_DATE}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0; font-size:14px; color:#666666;">Time</td>
+                        <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{EVENT_TIME}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0; font-size:14px; color:#666666;">Location</td>
+                        <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{EVENT_LOCATION}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0; font-size:14px; color:#666666;">Name</td>
+                        <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{APPLICANT_NAME}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0; font-size:14px; color:#666666;">Email</td>
+                        <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{APPLICANT_EMAIL}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0; font-size:14px; color:#666666;">Submitted</td>
+                        <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{SUBMITTED_AT}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0; font-size:14px; color:#666666;">CV</td>
+                        <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{CV_FILE_NAME}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Answers. One pre-escaped block built by submit-application. -->
+              <p style="margin:0 0 4px; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#888888;">Your answers</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e2e4ea; margin-bottom:24px;">
+                {{ANSWERS_HTML}}
+              </table>
+
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:6px; border:1px solid #0B2545;">
+                    <a href="{{EVENT_URL}}" style="display:inline-block; padding:11px 27px; font-size:14px; font-weight:bold; color:#0B2545; text-decoration:none;">View event details</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:28px 0 0; font-size:13px; line-height:1.6; color:#888888;">
+                We'll be in touch once your application has been reviewed. Your CV is used only to
+                review this application and is deleted after the retention period set out in our
+                privacy policy.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 32px; background-color:#f4f4f7; text-align:center;">
+              <p style="margin:0; font-size:12px; color:#999999;">
+                Manchester University Trading and Investment Society (MUTIS)<br>
+                <a href="https://mutisfinancesociety.com" style="color:#999999;">mutisfinancesociety.com</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

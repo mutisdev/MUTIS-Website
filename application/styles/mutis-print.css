@@ -1,0 +1,136 @@
+/* ==========================================================================
+   PRINT
+   The site's first print stylesheet. It exists for one job: the application
+   receipt has a "Print or save as PDF" button, and an applicant pressing it
+   should get a clean record of what they submitted — not a screenshot of a
+   dark cinematic website with a navigation bar in it.
+
+   Imported last (see index.css) so these rules win over the equal-specificity
+   screen rules they override.
+   ========================================================================== */
+
+@media print {
+  /* Ink, not atmosphere. The site runs on a dark theme with background images,
+     overlays and a film grain; none of that belongs on paper. */
+  :root,
+  body,
+  main,
+  .subpage-light,
+  .page-section,
+  .page-hero {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+
+  body {
+    margin: 0;
+    /* Browsers default to not printing backgrounds; say so explicitly rather
+       than relying on it, so a user who has enabled them still gets ink-light
+       output. */
+    -webkit-print-color-adjust: economy;
+    print-color-adjust: economy;
+  }
+
+  /* Chrome everything the reader didn't ask to print. */
+  .grain,
+  .skip-link,
+  .pm-nav,
+  header,
+  .footer,
+  footer,
+  .back-to-top,
+  .scroll-progress,
+  .freshers-fair-banner,
+  .upcoming-event-banner,
+  .crumb,
+  .page-eyebrow,
+  .event-signup-poster-wrap,
+  .application-receipt-actions {
+    display: none !important;
+  }
+
+  /* The scroll-reveal classes start at opacity 0 and are only made visible by
+     an IntersectionObserver. Anything below the fold would otherwise print
+     blank, which is exactly what a receipt must never do. */
+  .r-up,
+  .r-up.in {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* No sticky or fixed positioning: both repeat or clip across printed pages. */
+  * {
+    position: static !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* ---- the receipt itself ---- */
+
+  .application-receipt {
+    border: 1px solid #000 !important;
+    border-radius: 0 !important;
+    padding: 24pt !important;
+    margin: 0 !important;
+    max-width: none !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .application-receipt h2 {
+    font-size: 20pt;
+    margin: 0 0 8pt;
+    color: #000 !important;
+  }
+
+  .application-receipt-code strong {
+    font-size: 16pt;
+    letter-spacing: 0.08em;
+  }
+
+  /* The "this is not a confirmed place" line must survive the loss of its
+     background colour, so it keeps a visible border and bold text. */
+  .application-receipt-notice {
+    border: 1pt solid #000 !important;
+    background: transparent !important;
+    color: #000 !important;
+    font-weight: 700;
+    padding: 8pt 10pt !important;
+  }
+
+  .application-receipt-details dt,
+  .application-receipt-answers dt {
+    color: #000 !important;
+    font-weight: 700;
+  }
+
+  .application-receipt-details dd,
+  .application-receipt-answers dd {
+    color: #000 !important;
+  }
+
+  /* Never split a question from its answer across a page break. */
+  .application-receipt-details > div,
+  .application-receipt-answers > div {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .application-receipt-subhead {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Printed links shouldn't read as underlined blue web links. */
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}

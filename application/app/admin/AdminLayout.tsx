@@ -9,6 +9,7 @@ import {
   Award,
   Newspaper,
   Inbox,
+  ClipboardList,
   MessageSquare,
   ShieldCheck,
   ScrollText,
@@ -63,6 +64,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Submissions",
     items: [
       { label: "Submissions", icon: Inbox, path: "/admin/submissions" },
+      { label: "Applications", icon: ClipboardList, path: "/admin/applications" },
       { label: "Feedback", icon: MessageSquare, path: "/admin/feedback" },
       { label: "Members", icon: UserPlus, path: "/admin/members" },
     ],
