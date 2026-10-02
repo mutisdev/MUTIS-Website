@@ -258,13 +258,6 @@ export function EventSignup() {
                 {requiresApplication ? "Apply" : "Sign up"}
               </div>
               <h2 className="r-up">{requiresApplication ? "Apply for a place" : "Reserve your spot"}</h2>
-              {requiresApplication && !receipt && (
-                <p className="lede r-up" style={{ marginBottom: 0 }}>
-                  Places at this event are awarded after review, so this is an application rather than a
-                  sign-up. You'll get a receipt straight away and hear from us once we've read it.
-                </p>
-              )}
-
               {renderFormSlot()}
             </div>
           </div>
