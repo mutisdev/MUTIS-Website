@@ -18,7 +18,11 @@ export type ContentTable =
   | "past_speakers"
   | "fund_managers"
   | "documents"
-  | "network_logos";
+  | "network_logos"
+  // An event's application questions. Admin-authored content with an `id`, so it
+  // fits this hook exactly — and being here is what gets question adds, edits,
+  // deletes and reorders into the audit log with no logging code of its own.
+  | "event_questions";
 
 type Row<T extends ContentTable> = Database["public"]["Tables"][T]["Row"];
 type Insert<T extends ContentTable> = Database["public"]["Tables"][T]["Insert"];

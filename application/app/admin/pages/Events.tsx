@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import DOMPurify from "dompurify";
-import { Loader2, Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Search, ClipboardList } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { useAdminMutation } from "../useAdminMutation";
@@ -13,8 +13,18 @@ import { UrlColumnImageUploader } from "../components/ImageUploader";
 import { RichTextEditor } from "../components/RichTextEditor";
 import { isHtmlEmpty } from "../lib/richText";
 import { usePageCache, hasCached, useDrawerFormCache } from "../usePageCache";
+import { QuestionBuilder } from "../components/QuestionBuilder";
+import {
+  draftsFromRows,
+  loadEventQuestions,
+  saveQuestionDrafts,
+  validateQuestionDrafts,
+  type QuestionDraft,
+} from "../lib/eventQuestions";
+import { Link } from "react-router";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
+type EventQuestionRow = Database["public"]["Tables"]["event_questions"]["Row"];
 
 type FormState = {
   title: string;
@@ -27,6 +37,9 @@ type FormState = {
   tags: string;
   signup_enabled: boolean;
   is_published: boolean;
+  requires_application: boolean;
+  /** Staged question drafts; only written when the event is saved. */
+  questions: QuestionDraft[];
 };
 
 const EMPTY_FORM: FormState = {
@@ -40,6 +53,8 @@ const EMPTY_FORM: FormState = {
   tags: "",
   signup_enabled: false,
   is_published: true,
+  requires_application: false,
+  questions: [],
 };
 
 function parseTags(input: string): string[] {
@@ -69,6 +84,10 @@ export function Events() {
     "admin:events:memberAttendanceCounts",
     new Map()
   );
+  const [applicationCounts, setApplicationCounts] = usePageCache<Map<string, number>>(
+    "admin:events:applicationCounts",
+    new Map()
+  );
   const [loading, setLoading] = useState(!hasCached("admin:events:rows"));
   const [view, setView] = usePageCache<"upcoming" | "past">("admin:events:view", "upcoming");
   const [publishedFilter, setPublishedFilter] = usePageCache<"all" | "published" | "unpublished">("admin:events:publishedFilter", "all");
@@ -79,12 +98,27 @@ export function Events() {
     useDrawerFormCache<EventRow, FormState>("events", EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // The question rows as they were when the drawer opened, so saving can diff
+  // against them, write only what actually changed, and give the audit log a
+  // truthful before-snapshot.
+  const [savedQuestions, setSavedQuestions] = useState<EventQuestionRow[]>([]);
+  const [questionErrors, setQuestionErrors] = useState<Record<string, string>>({});
+  const [questionFormError, setQuestionFormError] = useState("");
 
   const fetchRows = async () => {
-    const [eventsRes, statsRes] = await Promise.all([
+    const [eventsRes, statsRes, applicationsRes] = await Promise.all([
       supabase.from("events").select("*"),
       supabase.from("event_attendance_stats").select("event_id, signup_count, attendance_count, member_attendance_count"),
+      // Counted here rather than added to event_attendance_stats so that view,
+      // which the dashboard also reads, keeps its current shape.
+      supabase.from("event_applications").select("event_id"),
     ]);
+    if (applicationsRes.error) toast.error("Could not load application counts.");
+    else {
+      const counts = new Map<string, number>();
+      for (const row of applicationsRes.data) counts.set(row.event_id, (counts.get(row.event_id) ?? 0) + 1);
+      setApplicationCounts(counts);
+    }
     if (eventsRes.error) toast.error("Could not load events.");
     else setRows(eventsRes.data);
     if (!statsRes.error) {
@@ -134,12 +168,40 @@ export function Events() {
       });
   }, [rows, view, publishedFilter, signupFilter, search]);
 
+  const resetQuestionErrors = () => {
+    setQuestionErrors({});
+    setQuestionFormError("");
+  };
+
   const openCreate = () => {
     setForm(EMPTY_FORM);
+    setSavedQuestions([]);
+    resetQuestionErrors();
     setEditing("new");
   };
 
-  const openEdit = (row: EventRow) => {
+  // Async on purpose: useDrawerFormCache snapshots the form as its dirty-check
+  // baseline the moment `editing` changes, so the questions have to be in the
+  // form BEFORE the drawer opens. Loading them afterwards would make every
+  // freshly-opened drawer look dirty and prompt "Discard unsaved changes?" on
+  // close, even if the admin typed nothing.
+  const openEdit = async (row: EventRow) => {
+    let questionRows: EventQuestionRow[] = [];
+    try {
+      // Loaded whether or not application mode is currently on: the toggle hides
+      // questions, it never deletes them, so an admin turning it back on must
+      // find them still here.
+      questionRows = await loadEventQuestions(row.id);
+    } catch (err) {
+      console.error("Failed to load application questions", err);
+      // Don't open at all: an empty builder would wrongly suggest this event has
+      // no questions, and the admin might re-add ones that already exist.
+      toast.error("Could not load this event's application questions. Please try again.");
+      return;
+    }
+
+    setSavedQuestions(questionRows);
+    resetQuestionErrors();
     setForm({
       title: row.title,
       description: row.description,
@@ -151,6 +213,8 @@ export function Events() {
       tags: row.tags.join(", "),
       signup_enabled: row.signup_enabled,
       is_published: row.is_published,
+      requires_application: row.requires_application,
+      questions: draftsFromRows(questionRows),
     });
     setEditing(row);
   };
@@ -163,6 +227,21 @@ export function Events() {
       toast.error("End time can't be before the start time.");
       return;
     }
+
+    // Application mode's own rules: at least one question, no empty prompts, at
+    // least two options on a choice question. Only checked when the toggle is
+    // on — questions kept behind a switched-off toggle needn't be valid.
+    resetQuestionErrors();
+    if (form.requires_application) {
+      const { form: formMessage, byKey } = validateQuestionDrafts(form.questions);
+      if (formMessage || Object.keys(byKey).length > 0) {
+        setQuestionFormError(formMessage ?? "");
+        setQuestionErrors(byKey);
+        toast.error(formMessage ?? "Some questions need fixing before you can save.");
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const values = {
@@ -176,12 +255,18 @@ export function Events() {
         tags: parseTags(form.tags),
         signup_enabled: form.signup_enabled,
         is_published: form.is_published,
+        requires_application: form.requires_application,
       };
+      // The event row goes through updateRow/insertRow so the audit log picks up
+      // the requires_application change in its before/after snapshot for free.
+      // Questions are written afterwards, against the saved event's id.
       if (editing === "new") {
-        await insertRow("events", values);
+        const created = await insertRow("events", values);
+        await saveQuestionDrafts(created.id, form.questions, savedQuestions, { insertRow, updateRow, deleteRow });
         toast.success("Event created.");
       } else if (editing) {
         await updateRow("events", editing.id, values, editing);
+        await saveQuestionDrafts(editing.id, form.questions, savedQuestions, { insertRow, updateRow, deleteRow });
         toast.success("Event updated.");
       }
       setEditing(null);
@@ -231,6 +316,24 @@ export function Events() {
     { key: "location", label: "Location", render: (r) => r.location, exportValue: (r) => r.location },
     { key: "signup", label: "Signup", render: (r) => (r.signup_enabled ? <StatusBadge status="confirmed" /> : "—"), exportValue: (r) => (r.signup_enabled ? "Yes" : "No") },
     { key: "capacity", label: "Capacity", render: (r) => (r.capacity != null ? `${signupCounts.get(r.id) ?? 0} / ${r.capacity}` : `${signupCounts.get(r.id) ?? 0} / unlimited`), exportValue: (r) => (r.capacity != null ? `${signupCounts.get(r.id) ?? 0} / ${r.capacity}` : `${signupCounts.get(r.id) ?? 0} / unlimited`) },
+    {
+      key: "applications",
+      label: "Applications",
+      exportValue: (r) => (r.requires_application ? (applicationCounts.get(r.id) ?? 0) : ""),
+      render: (r) =>
+        r.requires_application ? (
+          <Link
+            to={`/admin/applications?event=${r.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-[5px] text-accent underline"
+          >
+            <ClipboardList className="h-[13px] w-[13px]" />
+            {applicationCounts.get(r.id) ?? 0}
+          </Link>
+        ) : (
+          "—"
+        ),
+    },
     { key: "member_attendance", label: "Members attended", render: (r) => `${memberAttendanceCounts.get(r.id) ?? 0}`, exportValue: (r) => memberAttendanceCounts.get(r.id) ?? 0 },
     { key: "attendance", label: "Feedback", render: (r) => `${attendanceCounts.get(r.id) ?? 0}`, exportValue: (r) => attendanceCounts.get(r.id) ?? 0 },
     {
@@ -256,7 +359,7 @@ export function Events() {
       label: "",
       render: (r) => (
         <div className="flex items-center gap-[4px]">
-          <button type="button" onClick={(e) => { e.stopPropagation(); openEdit(r); }} className="rounded-[8px] p-[6px] text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground">
+          <button type="button" onClick={(e) => { e.stopPropagation(); void openEdit(r); }} className="rounded-[8px] p-[6px] text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground">
             <Pencil className="h-[14px] w-[14px]" />
           </button>
           <button type="button" onClick={(e) => { e.stopPropagation(); setPendingDelete(r); }} className="rounded-[8px] p-[6px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
@@ -315,7 +418,7 @@ export function Events() {
             <Loader2 className="h-[18px] w-[18px] animate-spin" />
           </div>
         ) : (
-          <DataTable columns={columns} data={filtered} keyField={(r) => r.id} onRowClick={openEdit} emptyMessage={`No ${view} events.`} exportFilename="events.csv" />
+          <DataTable columns={columns} data={filtered} keyField={(r) => r.id} onRowClick={(r) => void openEdit(r)} emptyMessage={`No ${view} events.`} exportFilename="events.csv" />
         )}
       </div>
 
@@ -365,8 +468,51 @@ export function Events() {
           </Field>
 
           <div className="flex items-center justify-between rounded-[12px] border border-border px-[16px] py-[14px]">
-            <span className="text-[13px] font-medium text-foreground">Signup enabled</span>
+            <span className="text-[13px] font-medium text-foreground">
+              {form.requires_application ? "Applications open" : "Signup enabled"}
+            </span>
             <PublishToggle checked={form.signup_enabled} onChange={(v) => setForm({ ...form, signup_enabled: v })} />
+          </div>
+
+          {/*
+            Application mode. Off by default and off for every existing event, so
+            an event nobody touches behaves exactly as it always has. Turning it
+            off again hides the questions but keeps every row — which is why the
+            builder stays mounted below only while it's on, and why the drafts
+            are still loaded either way.
+          */}
+          <div className="flex flex-col gap-[14px] rounded-[12px] border border-border px-[16px] py-[14px]">
+            <div className="flex items-center justify-between gap-[12px]">
+              <div className="min-w-0">
+                <span className="text-[13px] font-medium text-foreground">Require application</span>
+                <p className="mt-[4px] text-[11px] leading-[1.6] text-muted-foreground">
+                  Replaces the one-click signup with your own questions plus a CV upload. Applicants get a
+                  receipt, not a confirmed place.
+                </p>
+              </div>
+              <PublishToggle
+                checked={form.requires_application}
+                label={form.requires_application ? "Application required" : "Application not required"}
+                onChange={(v) => setForm({ ...form, requires_application: v })}
+              />
+            </div>
+
+            {form.requires_application ? (
+              <QuestionBuilder
+                value={form.questions}
+                onChange={(questions) => setForm((f) => ({ ...f, questions }))}
+                errors={questionErrors}
+                formError={questionFormError}
+                applicationCount={editing && editing !== "new" ? (applicationCounts.get(editing.id) ?? 0) : 0}
+              />
+            ) : (
+              form.questions.length > 0 && (
+                <p className="text-[11px] leading-[1.6] text-muted-foreground">
+                  {form.questions.length} question{form.questions.length === 1 ? "" : "s"} and any applications
+                  already received are kept, just hidden. Turn this back on to use them again.
+                </p>
+              )
+            )}
           </div>
           <div className="flex items-center justify-between rounded-[12px] border border-border px-[16px] py-[14px]">
             <span className="text-[13px] font-medium text-foreground">Published</span>

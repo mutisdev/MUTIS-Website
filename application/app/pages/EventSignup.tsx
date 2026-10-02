@@ -1,21 +1,18 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import DOMPurify from "dompurify";
 import { useReveal } from "@/app/hooks/useReveal";
 import { htmlToExcerpt } from "@/app/lib/htmlExcerpt";
 import { PageMeta } from "@/app/components/PageMeta";
 import { DEFAULT_DESCRIPTION } from "@/app/hooks/usePageMeta";
-import { useFormStatus } from "@/app/hooks/useFormStatus";
-import { FormFeedback } from "@/app/components/FormFeedback";
-import { PrivacyConsent } from "@/app/components/PrivacyConsent";
-import { UniEmailField, validateUniEmail } from "@/app/components/EmailField";
-import { normaliseEmail } from "@shared/uniEmail";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
-import { Captcha } from "@/app/components/Captcha";
-import { useCaptcha } from "@/app/hooks/useCaptcha";
-import { submitForm, submitErrorMessage } from "@/app/lib/submitForm";
 import { hasEventEnded } from "@shared/eventStatus";
+import type { ApplicationReceiptData } from "@/app/lib/submitApplication";
+import { SignupForm } from "./event-signup/SignupForm";
+import { ApplicationForm } from "./event-signup/ApplicationForm";
+import { ApplicationReceipt } from "./event-signup/ApplicationReceipt";
+import { useEventQuestions } from "./event-signup/useEventQuestions";
 
 type EventRow = Tables<"events">;
 
@@ -33,9 +30,17 @@ export function EventSignup() {
   const [event, setEvent] = useState<EventRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [receipt, setReceipt] = useState<{ data: ApplicationReceiptData; emailed: boolean } | null>(null);
 
-  const { status, error, submitting, fail, succeed, reset, onFormInput } = useFormStatus();
-  const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
+  // Only fetched for an event actually in application mode; RLS additionally
+  // limits the rows to published application-mode events.
+  const requiresApplication = event?.requires_application ?? false;
+  const {
+    questions,
+    loading: questionsLoading,
+    error: questionsError,
+    fingerprint,
+  } = useEventQuestions(event?.id, requiresApplication);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,61 +85,7 @@ export function EventSignup() {
     };
   }, [eventId]);
 
-  useReveal([event?.id, isLoading, loadError]);
-
-  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!event) return;
-    const form = e.currentTarget;
-
-    if ((form.elements.namedItem("bot-field") as HTMLInputElement)?.value) {
-      succeed();
-      return;
-    }
-
-    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
-    const consentPrivacy = (form.elements.namedItem("consent-privacy") as HTMLInputElement).checked;
-
-    if (!name || !email || !consentPrivacy) {
-      fail("Please fill in your name and university email, and agree to the Privacy Policy.");
-      return;
-    }
-
-    const emailError = validateUniEmail(email);
-    if (emailError) {
-      fail(emailError);
-      return;
-    }
-
-    if (!captchaToken) {
-      fail("Please tick the captcha box.");
-      return;
-    }
-
-    submitting();
-
-    const result = await submitForm("event_signup", captchaToken, {
-      event_id: event.id,
-      name,
-      email: normaliseEmail(email),
-      consent_privacy: consentPrivacy,
-    });
-    resetCaptcha();
-
-    if (!result.ok) {
-      fail(
-        submitErrorMessage(result, {
-          contact: "email us at mutis@manchesterstudentsunion.com",
-          duplicate: "You've already signed up for this event with that email.",
-        }),
-      );
-      return;
-    }
-
-    succeed();
-    form.reset();
-  };
+  useReveal([event?.id, isLoading, loadError, questions.length, receipt !== null]);
 
   if (isLoading) {
     return (
@@ -174,12 +125,75 @@ export function EventSignup() {
     );
   }
 
+  // Wording differs between the two modes; the gates themselves don't.
+  const closedCopy = requiresApplication
+    ? {
+        ended: "This event has already happened, so applications are closed.",
+        disabled: "Applications aren't open for this event right now.",
+      }
+    : {
+        ended: "This event has already happened, so signups are closed.",
+        disabled: "Signups aren't open for this event right now.",
+      };
+
+  // Application mode with no questions is an admin mid-edit, not a usable form —
+  // the Edge Function refuses it too, so don't render an empty application.
+  const applicationNotReady = requiresApplication && !questionsLoading && questions.length === 0;
+
+  const renderFormSlot = () => {
+    // Checked before the closed-signup gates: once someone has submitted, their
+    // receipt is theirs to read and print, even if an admin closes applications
+    // or the event ends while the page is still open.
+    if (receipt) return <ApplicationReceipt receipt={receipt.data} emailed={receipt.emailed} />;
+
+    if (hasEventEnded(event)) {
+      return (
+        <p className="event-signup-closed r-up">
+          {closedCopy.ended} Head to the <Link to="/events">events page</Link> for upcoming events.
+        </p>
+      );
+    }
+    if (!event.signup_enabled || applicationNotReady) {
+      return (
+        <p className="event-signup-closed r-up">
+          {closedCopy.disabled} Check back later, or head to the{" "}
+          <Link to="/events">events page</Link> for other upcoming events.
+        </p>
+      );
+    }
+
+    if (!requiresApplication) return <SignupForm eventId={event.id} />;
+
+    if (questionsLoading) {
+      return (
+        <p className="lede r-up" role="status" style={{ marginTop: 24 }}>
+          Loading the application form…
+        </p>
+      );
+    }
+    if (questionsError) {
+      return (
+        <p className="form-status form-error r-up" role="alert" style={{ marginTop: 24 }}>
+          {questionsError}
+        </p>
+      );
+    }
+    return (
+      <ApplicationForm
+        eventId={event.id}
+        questions={questions}
+        fingerprint={fingerprint}
+        onSubmitted={(data, emailed) => setReceipt({ data, emailed })}
+      />
+    );
+  };
+
   return (
     <>
       <PageMeta
         pathname={`/events/${event.id}/signup`}
         override={{
-          title: `Sign up — ${event.title} | MUTIS Finance Society`,
+          title: `${requiresApplication ? "Apply" : "Sign up"} — ${event.title} | MUTIS Finance Society`,
           description: htmlToExcerpt(event.description, 160) || DEFAULT_DESCRIPTION,
           image: event.cover_image_url ?? undefined,
           noindex: true,
@@ -190,7 +204,8 @@ export function EventSignup() {
         <div className="page-hero-inner">
           <div>
             <div className="crumb">
-              <Link to="/">MUTIS</Link><span>/</span><Link to="/events">Events</Link><span>/</span><span>Sign up</span>
+              <Link to="/">MUTIS</Link><span>/</span><Link to="/events">Events</Link><span>/</span>
+              <span>{requiresApplication ? "Apply" : "Sign up"}</span>
             </div>
             <div className="page-eyebrow r-up"><span className="bar" />Events</div>
             <h1 className="page-title r-up">{event.title}</h1>
@@ -238,53 +253,19 @@ export function EventSignup() {
 
               <hr className="modal-divider" />
 
-              <div className="page-eyebrow r-up"><span className="bar" />Sign up</div>
-              <h2 className="r-up">Reserve your spot</h2>
-
-              {hasEventEnded(event) ? (
-                <p className="event-signup-closed r-up">
-                  This event has already happened, so signups are closed. Head to the{" "}
-                  <Link to="/events">events page</Link> for upcoming events.
+              <div className="page-eyebrow r-up">
+                <span className="bar" />
+                {requiresApplication ? "Apply" : "Sign up"}
+              </div>
+              <h2 className="r-up">{requiresApplication ? "Apply for a place" : "Reserve your spot"}</h2>
+              {requiresApplication && !receipt && (
+                <p className="lede r-up" style={{ marginBottom: 0 }}>
+                  Places at this event are awarded after review, so this is an application rather than a
+                  sign-up. You'll get a receipt straight away and hear from us once we've read it.
                 </p>
-              ) : !event.signup_enabled ? (
-                <p className="event-signup-closed r-up">
-                  Signups aren't open for this event right now. Check back later, or head to the{" "}
-                  <Link to="/events">events page</Link> for other upcoming events.
-                </p>
-              ) : status === "sent" ? (
-                <div style={{ marginTop: 24 }}>
-                  <FormFeedback status={status} successMessage="You're signed up — see you there." style={{ fontSize: 16 }} />
-                  <button className="btn btn-ghost" style={{ marginTop: 24, textDecoration: "none" }} onClick={reset}>
-                    Sign up someone else
-                  </button>
-                </div>
-              ) : (
-                <form className="contact-form r-up" name="event-signup" onSubmit={onSubmit} onInput={onFormInput} noValidate style={{ marginTop: 24, maxWidth: 480 }}>
-                  <p className="hidden-field">
-                    <label>
-                      Don't fill this out if you're human: <input name="bot-field" tabIndex={-1} autoComplete="off" />
-                    </label>
-                  </p>
-                  <div className="field">
-                    <label htmlFor="su-name">Full name *</label>
-                    <input id="su-name" name="name" type="text" autoComplete="name" required />
-                  </div>
-                  <UniEmailField id="su-email" />
-                  <PrivacyConsent id="su-consent-privacy" />
-                  <Captcha {...captchaProps} />
-                  <FormFeedback status={status} error={error} />
-                  <button
-                    className="btn btn-primary"
-                    type="submit"
-                    disabled={status === "submitting" || !captchaToken}
-                    aria-busy={status === "submitting"}
-                    style={{ alignSelf: "flex-start" }}
-                  >
-                    {status === "submitting" ? "Signing up…" : "Sign up"}
-                    <span className="arrow" />
-                  </button>
-                </form>
               )}
+
+              {renderFormSlot()}
             </div>
           </div>
         </div>

@@ -8,6 +8,8 @@
 @import './mutis-subpage.css';
 @import './mutis-light.css';
 @import './mutis-admin.css';
+/* Last, so its overrides win over the equal-specificity screen rules above. */
+@import './mutis-print.css';
 
 @layer utilities {
   .scrollbar-hide {

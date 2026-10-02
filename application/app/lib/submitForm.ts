@@ -1,61 +1,21 @@
-import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
 import { CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
+import {
+  formatErrorRef,
+  invokeFunction,
+  type FunctionFailure,
+  type FunctionResult,
+} from "@/app/lib/invokeFunction";
 
 export type PublicFormName = "contact" | "sponsorship" | "event_signup" | "attendance" | "membership" | "alumni";
 
-/**
- * Why a submission failed. Server codes come from the `submit-form` Edge
- * Function's response body; the rest are decided here, in the browser:
- * - network: the request never got a response (after one retry). Nothing is
- *   in the function logs for these.
- * - timeout: no response within REQUEST_TIMEOUT_MS.
- * - relay: Supabase's gateway failed before reaching the function.
- * - unreadable_response: the function answered 2xx but the reply couldn't be
- *   read, so the submission was most likely saved.
- * - http_<status>: an error status whose body wasn't the function's JSON.
- */
-export type SubmitFormErrorCode =
-  | "captcha_failed"
-  | "duplicate"
-  | "invalid"
-  | "bad_request"
-  | "unknown_form"
-  | "unexpected_file"
-  | "captcha_unavailable"
-  | "db_error"
-  | "internal"
-  | "network"
-  | "timeout"
-  | "relay"
-  | "unreadable_response"
-  | `http_${number}`;
+// The transport, the error taxonomy and the retry behaviour now live in
+// invokeFunction.ts, shared with submitApplication.ts. These aliases are kept
+// so the existing names still mean what they always did at the call sites.
+export type SubmitFormErrorCode = FunctionFailure["code"];
+export type SubmitFormFailure = FunctionFailure;
+export type SubmitFormResult = FunctionResult;
 
-export type SubmitFormFailure = {
-  ok: false;
-  code: SubmitFormErrorCode;
-  /** Server-provided explanation, shown as-is for `invalid`. */
-  message?: string;
-  /** Narrows `code` (e.g. Postgres error code, reCAPTCHA error codes, the browser's fetch error). */
-  detail?: string;
-};
-
-export type SubmitFormResult = { ok: true } | SubmitFormFailure;
-
-const REQUEST_TIMEOUT_MS = 20_000;
-const RETRY_DELAY_MS = 1_000;
-
-const SERVER_CODES = new Set<string>([
-  "captcha_failed",
-  "duplicate",
-  "invalid",
-  "bad_request",
-  "unknown_form",
-  "unexpected_file",
-  "captcha_unavailable",
-  "db_error",
-  "internal",
-]);
+export { formatErrorRef };
 
 /**
  * Sends a public form submission to the `submit-form` Edge Function, which
@@ -73,7 +33,7 @@ export async function submitForm(
   payload: Record<string, unknown>,
   photo?: Blob | null
 ): Promise<SubmitFormResult> {
-  const buildBody = () => {
+  return await invokeFunction("submit-form", `${form} form`, () => {
     if (!photo) return { form, token, payload };
     const body = new FormData();
     body.append("form", form);
@@ -81,64 +41,7 @@ export async function submitForm(
     body.append("payload", JSON.stringify(payload));
     body.append("photo", photo, "photo.jpeg");
     return body;
-  };
-
-  let result = await invokeOnce(form, buildBody());
-  if (!result.ok && result.code === "network") {
-    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-    result = await invokeOnce(form, buildBody());
-  }
-  return result;
-}
-
-async function invokeOnce(form: PublicFormName, body: Record<string, unknown> | FormData): Promise<SubmitFormResult> {
-  const { error } = await supabase.functions.invoke("submit-form", { body, timeout: REQUEST_TIMEOUT_MS });
-  if (!error) return { ok: true };
-
-  const failure = await classify(error);
-  console.error(`Failed to submit ${form} form [${formatErrorRef(failure)}]`, error);
-  return failure;
-}
-
-async function classify(error: unknown): Promise<SubmitFormFailure> {
-  if (error instanceof FunctionsHttpError) {
-    const response: Response = error.context;
-    try {
-      const data: { code?: string; error?: string; detail?: string } = await response.json();
-      if (data.code && SERVER_CODES.has(data.code)) {
-        return { ok: false, code: data.code as SubmitFormErrorCode, message: data.error, detail: data.detail };
-      }
-    } catch {
-      // Not the function's JSON (e.g. a gateway error page): fall through.
-    }
-    return { ok: false, code: `http_${response.status}` };
-  }
-
-  if (error instanceof FunctionsRelayError) {
-    const response: Response = error.context;
-    return { ok: false, code: "relay", detail: String(response.status) };
-  }
-
-  if (error instanceof FunctionsFetchError) {
-    const cause = error.context;
-    if (cause instanceof DOMException && cause.name === "AbortError") return { ok: false, code: "timeout" };
-    return { ok: false, code: "network", detail: describeCause(cause) };
-  }
-
-  // invoke wraps every fetch failure and non-2xx status above, so anything
-  // else was thrown while reading a successful response.
-  return { ok: false, code: "unreadable_response", detail: describeCause(error) };
-}
-
-/** The browser's own wording ("Load failed" in Safari, "Failed to fetch" in Chrome), trimmed. */
-function describeCause(cause: unknown): string | undefined {
-  const message = cause instanceof Error ? cause.message : typeof cause === "string" ? cause : undefined;
-  return message?.slice(0, 80) || undefined;
-}
-
-/** Short reference shown to visitors and logged, e.g. "db_error/23503" or "network/Load failed". */
-export function formatErrorRef(failure: SubmitFormFailure): string {
-  return failure.detail ? `${failure.code}/${failure.detail}` : failure.code;
+  });
 }
 
 /**
@@ -161,6 +64,8 @@ export function submitErrorMessage(
       return failure.message ?? withRef(`Some details weren't accepted. Please check the form and try again, or ${contact}.`);
     case "captcha_failed":
       return withRef(CAPTCHA_FAILED_MESSAGE);
+    case "rate_limited":
+      return failure.message ?? "Too many attempts just now. Please wait a little and try again.";
     case "network":
       return withRef(
         "We couldn't reach our server. Check your connection and try again. If you opened this link inside Instagram or another app, open it in your browser instead (tap ⋯ → Open in browser)."
