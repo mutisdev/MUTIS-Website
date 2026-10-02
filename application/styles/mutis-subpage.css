@@ -837,20 +837,31 @@
   padding: 28px;
 }
 .application-receipt-head {
-  display: flex; flex-wrap: wrap; align-items: flex-start;
-  justify-content: space-between; gap: 16px;
+  display: flex; flex-wrap: wrap;
+  /* baseline, not flex-start: lines the "Your reference" label up with the
+     heading's baseline instead of letting the two columns start at the same
+     top edge, which left the code sitting at no particular height. */
+  align-items: baseline;
+  justify-content: space-between; gap: 8px 16px;
 }
 .application-receipt h2 { margin: 0; }
 .application-receipt-code {
   display: flex; flex-direction: column; gap: 4px; margin: 0; text-align: right;
 }
+/* Both lines below are right-aligned AND letter-spaced, and letter-spacing adds
+   its space AFTER the last character — so each one's right edge sat short of the
+   box by a different amount (0.24em of 10px vs 0.08em of 20px), leaving the
+   label and the code visibly out of line with each other. The negative margins
+   take that trailing space back off. */
 .application-receipt-code span {
   font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+  margin-right: -0.24em;
   color: var(--ink-soft, #3c4a66);
 }
 .application-receipt-code strong {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 20px; letter-spacing: 0.08em;
+  margin-right: -0.08em;
   /* Not the cyan accent: this code gets transcribed by hand, so it takes the
      highest-contrast ink we have (14:1) and is distinguished by the monospace
      face and weight rather than by colour alone. */
