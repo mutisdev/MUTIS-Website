@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { FileText, Loader2, Search, ShieldAlert } from "lucide-react";
+import { Download, FileText, Loader2, Search, ShieldAlert } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import {
@@ -186,25 +186,49 @@ export function Applications() {
   };
 
   /**
-   * Opens a CV through a short-lived signed URL. The bucket is private, so this
-   * is the only way to read one, and the view is audited before the link is
-   * minted. The URL is never rendered into the page or kept in state — it's a
-   * working credential, short-lived but still a key.
+   * Opens a CV through a signed URL — the bucket is private, so this is the only
+   * way to reach one.
+   *
+   * Two modes, because reviewing and keeping are different jobs:
+   * - "view" serves the PDF inline, so it opens in the browser's own viewer in a
+   *   new tab and can be read next to the answers.
+   * - "download" sets a Content-Disposition filename, so it saves as the file the
+   *   applicant actually sent rather than as <uuid>.pdf, and can be filed
+   *   wherever the committee keeps its shortlists.
+   *
+   * Both are audited before the link is minted. The URL itself is never rendered
+   * into the page or kept in state: it's a bearer credential for one PDF.
    */
-  const viewCv = async (row: Application) => {
+  const openCv = async (row: Application, mode: "view" | "download") => {
     if (!row.cv_path) return;
-    setCvLoadingId(row.id);
+    setCvLoadingId(`${row.id}:${mode}`);
     try {
-      await logApplicationAction(row.id, "view", null, { cv_path: row.cv_path, event_id: row.event_id });
+      await logApplicationAction(row.id, "view", null, {
+        cv_path: row.cv_path,
+        event_id: row.event_id,
+        access: mode,
+      });
       const { data, error } = await supabase.storage
         .from(CV_BUCKET)
-        .createSignedUrl(row.cv_path, CV_SIGNED_URL_SECONDS);
+        .createSignedUrl(row.cv_path, CV_SIGNED_URL_SECONDS,
+          // Supabase turns this into the download filename; omitting it entirely
+          // is what makes the other mode render inline.
+          mode === "download" ? { download: row.cv_file_name } : undefined);
       if (error || !data) {
         console.error("Could not sign CV URL", row.cv_path, error);
-        toast.error("Could not open that CV.");
+        toast.error(mode === "download" ? "Could not download that CV." : "Could not open that CV.");
         return;
       }
-      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+      if (mode === "download") {
+        // A plain anchor click rather than window.open: a download shouldn't
+        // leave a blank tab behind.
+        const link = document.createElement("a");
+        link.href = data.signedUrl;
+        link.download = row.cv_file_name;
+        link.click();
+      } else {
+        window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+      }
     } finally {
       setCvLoadingId(null);
     }
@@ -324,21 +348,39 @@ export function Applications() {
       label: "CV",
       render: (r) =>
         r.cv_path ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              void viewCv(r);
-            }}
-            className="inline-flex items-center gap-[5px] rounded-[8px] border border-border px-[8px] py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-white/5"
-          >
-            {cvLoadingId === r.id ? (
-              <Loader2 className="h-[12px] w-[12px] animate-spin" />
-            ) : (
-              <FileText className="h-[12px] w-[12px]" />
-            )}
-            View CV
-          </button>
+          <span className="inline-flex items-center gap-[4px]">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                void openCv(r, "view");
+              }}
+              className="inline-flex items-center gap-[5px] rounded-[8px] border border-border px-[8px] py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-white/5"
+            >
+              {cvLoadingId === `${r.id}:view` ? (
+                <Loader2 className="h-[12px] w-[12px] animate-spin" />
+              ) : (
+                <FileText className="h-[12px] w-[12px]" />
+              )}
+              View
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                void openCv(r, "download");
+              }}
+              aria-label={`Download ${r.cv_file_name}`}
+              title={`Download ${r.cv_file_name}`}
+              className="inline-flex items-center rounded-[8px] border border-border p-[6px] text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+            >
+              {cvLoadingId === `${r.id}:download` ? (
+                <Loader2 className="h-[12px] w-[12px] animate-spin" />
+              ) : (
+                <Download className="h-[12px] w-[12px]" />
+              )}
+            </button>
+          </span>
         ) : (
           <span className="text-[12px] text-muted-foreground">Deleted</span>
         ),
@@ -359,9 +401,10 @@ export function Applications() {
       <h1 className="mt-[8px] text-[22px] font-medium text-foreground">Applications</h1>
       <p className="mt-[8px] max-w-[70ch] text-[13px] leading-[1.6] text-muted-foreground">
         Applications for events in application mode. Answers can't be edited — each one keeps the wording
-        it was asked under, so editing a question later never changes what someone already said. CVs are
-        opened through a link that expires after {CV_SIGNED_URL_SECONDS} seconds, every view is recorded in
-        the audit log, and CVs are deleted {CV_RETENTION_DAYS} days after the event.
+        it was asked under, so editing a question later never changes what someone already said. Open a CV
+        to read it in the browser, or download it to keep. Every CV access is recorded in the audit log,
+        and CVs are deleted from storage {CV_RETENTION_DAYS} days after the event — download anything you
+        need to keep longer before then.
       </p>
 
       {applicationEvents.length === 0 ? (
@@ -462,18 +505,32 @@ export function Applications() {
                     {detail.cv_file_name}{" "}
                     <span className="text-muted-foreground">({formatFileSize(detail.cv_size_bytes)})</span>
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => void viewCv(detail)}
-                    className="inline-flex items-center gap-[6px] self-start rounded-[10px] border border-border px-[14px] py-[9px] text-[13px]! font-medium text-foreground transition-colors hover:bg-white/5"
-                  >
-                    {cvLoadingId === detail.id ? (
-                      <Loader2 className="h-[14px] w-[14px] animate-spin" />
-                    ) : (
-                      <FileText className="h-[14px] w-[14px]" />
-                    )}
-                    View CV
-                  </button>
+                  <div className="flex flex-wrap gap-[8px]">
+                    <button
+                      type="button"
+                      onClick={() => void openCv(detail, "view")}
+                      className="inline-flex items-center gap-[6px] rounded-[10px] border border-border px-[14px] py-[9px] text-[13px]! font-medium text-foreground transition-colors hover:bg-white/5"
+                    >
+                      {cvLoadingId === `${detail.id}:view` ? (
+                        <Loader2 className="h-[14px] w-[14px] animate-spin" />
+                      ) : (
+                        <FileText className="h-[14px] w-[14px]" />
+                      )}
+                      Open in browser
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void openCv(detail, "download")}
+                      className="inline-flex items-center gap-[6px] rounded-[10px] border border-border px-[14px] py-[9px] text-[13px]! font-medium text-foreground transition-colors hover:bg-white/5"
+                    >
+                      {cvLoadingId === `${detail.id}:download` ? (
+                        <Loader2 className="h-[14px] w-[14px] animate-spin" />
+                      ) : (
+                        <Download className="h-[14px] w-[14px]" />
+                      )}
+                      Download
+                    </button>
+                  </div>
                 </>
               ) : (
                 <p className="inline-flex items-start gap-[6px] text-[13px] leading-[1.6] text-muted-foreground">

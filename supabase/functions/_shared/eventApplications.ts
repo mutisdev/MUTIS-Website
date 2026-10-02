@@ -23,9 +23,19 @@ export const CV_RETENTION_DAYS = 90;
  * The bucket's own file_size_limit is set to match, as a backstop. */
 export const CV_MAX_BYTES = 5 * 1024 * 1024;
 
-/** Lifetime of an admin's signed CV URL. Long enough to open a PDF, short
- * enough that a copied link is useless by the time it could be shared. */
-export const CV_SIGNED_URL_SECONDS = 60;
+/**
+ * Lifetime of an admin's signed CV URL. An hour, because reviewing is done in
+ * sittings: the committee opens a CV, reads it alongside the answers, goes back,
+ * opens the next one, and may well return to an earlier tab. A link that died
+ * after a minute meant re-requesting it constantly, which is friction with no
+ * security benefit worth having — the link is unguessable, it only reaches one
+ * applicant's PDF, and every access is recorded in the audit log either way.
+ *
+ * Note this is the life of the LINK, not of the file: the CV itself stays in
+ * storage until CV_RETENTION_DAYS passes, so it can be reopened and downloaded
+ * freely in the meantime.
+ */
+export const CV_SIGNED_URL_SECONDS = 60 * 60;
 
 export const MAX_QUESTION_PROMPT_CHARS = 300;
 export const MAX_CHOICE_OPTION_CHARS = 120;
