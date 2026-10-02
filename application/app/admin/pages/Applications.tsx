@@ -399,13 +399,6 @@ export function Applications() {
     <div className="px-[24px] py-[48px] lg:px-[40px] lg:py-[56px]">
       <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Submissions</p>
       <h1 className="mt-[8px] text-[22px] font-medium text-foreground">Applications</h1>
-      <p className="mt-[8px] max-w-[70ch] text-[13px] leading-[1.6] text-muted-foreground">
-        Applications for events in application mode. Answers can't be edited — each one keeps the wording
-        it was asked under, so editing a question later never changes what someone already said. Open a CV
-        to read it in the browser, or download it to keep. Every CV access is recorded in the audit log,
-        and CVs are deleted from storage {CV_RETENTION_DAYS} days after the event — download anything you
-        need to keep longer before then.
-      </p>
 
       {applicationEvents.length === 0 ? (
         <div className="mt-[24px] rounded-[16px] border border-border bg-card px-[24px] py-[48px] text-center text-[13px] text-muted-foreground">
@@ -531,6 +524,13 @@ export function Applications() {
                       Download
                     </button>
                   </div>
+                  {/* The one operational fact that isn't obvious from the UI: this
+                      file won't be here forever. Sits next to the download button
+                      because that's where it's actionable, rather than in a
+                      page-level blurb nobody reads twice. */}
+                  <p className="text-[11px] leading-[1.6] text-muted-foreground">
+                    Deleted {CV_RETENTION_DAYS} days after the event — download it to keep it longer.
+                  </p>
                 </>
               ) : (
                 <p className="inline-flex items-start gap-[6px] text-[13px] leading-[1.6] text-muted-foreground">
