@@ -46,23 +46,21 @@
                 </tr>
               </table>
 
-              <!-- Reference code -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0B2545; border-radius:6px; margin-bottom:24px;">
-                <tr>
-                  <td style="padding:18px 24px;" align="center">
-                    <p style="margin:0 0 6px; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#9ec1d4;">Your reference</p>
-                    <p style="margin:0; font-size:24px; font-weight:bold; letter-spacing:0.08em; color:#ffffff; font-family:'Courier New', Courier, monospace;">{{REFERENCE_CODE}}</p>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- What we have on file -->
+              <!-- What we have on file. The reference sits at the top of this
+                   table rather than in a panel of its own: it's one more fact
+                   about the application, and a separate highlight box gave it a
+                   weight it doesn't need. It also inherits the body font here
+                   instead of carrying its own. -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7; border-radius:6px; margin-bottom:24px;">
                 <tr>
                   <td style="padding:20px 24px;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="padding:6px 0; font-size:14px; color:#666666; width:110px;">Event</td>
+                        <td style="padding:6px 0; font-size:14px; color:#666666; width:110px;">Reference</td>
+                        <td style="padding:6px 0; font-size:14px; color:#0B2545; font-weight:bold;">{{REFERENCE_CODE}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0; font-size:14px; color:#666666;">Event</td>
                         <td style="padding:6px 0; font-size:14px; color:#0B2545; font-weight:bold;">{{EVENT_NAME}}</td>
                       </tr>
                       <tr>
