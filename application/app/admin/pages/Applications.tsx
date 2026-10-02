@@ -183,6 +183,15 @@ export function Applications() {
     // this task — whoever builds them should send from here (or from a trigger
     // on this column) and must keep the "not a confirmed place" wording of the
     // receipt in mind, since an applicant may have printed it.
+    //
+    // TODO(video-details): the acceptance email is also where an online event's
+    // "Joining online" block belongs. It is deliberately withheld from the
+    // application receipt — a receipt is not a place — and an accepted
+    // application does not become an event_signups row, so neither the
+    // confirmation nor the reminders reach these applicants at all today. See
+    // the matching notes in supabase/functions/send-signup-confirmation and
+    // send-event-reminders; videoDetailsBlock() in _shared/sendEmail.ts renders
+    // the block for whichever email ends up carrying it.
   };
 
   /**
