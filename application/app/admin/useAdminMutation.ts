@@ -19,9 +19,12 @@ export type ContentTable =
   | "fund_managers"
   | "documents"
   | "network_logos"
-  // An event's application questions. Admin-authored content with an `id`, so it
-  // fits this hook exactly — and being here is what gets question adds, edits,
-  // deletes and reorders into the audit log with no logging code of its own.
+  // Position and scheme listings, shown on the public Opportunities page.
+  | "positions"
+  // An event's or a position's application questions. Admin-authored content
+  // with an `id`, so it fits this hook exactly — and being here is what gets
+  // question adds, edits, deletes and reorders into the audit log with no
+  // logging code of its own.
   | "event_questions";
 
 type Row<T extends ContentTable> = Database["public"]["Tables"][T]["Row"];

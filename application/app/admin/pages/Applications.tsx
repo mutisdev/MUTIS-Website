@@ -11,6 +11,7 @@ import {
   formatFileSize,
   isQuestionType,
   type ApplicationStatus,
+  type ApplicationTarget,
 } from "@shared/eventApplications";
 import { useToast } from "../components/Toast";
 import { useAuth } from "../AuthProvider";
@@ -20,6 +21,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { usePageCache, hasCached } from "../usePageCache";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
+type PositionRow = Database["public"]["Tables"]["positions"]["Row"];
 type ApplicationRow = Database["public"]["Tables"]["event_applications"]["Row"];
 type AnswerRow = Database["public"]["Tables"]["application_answers"]["Row"];
 
@@ -52,6 +54,7 @@ export function Applications() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [events, setEvents] = usePageCache<EventRow[]>("admin:applications:events", []);
+  const [positions, setPositions] = usePageCache<PositionRow[]>("admin:applications:positions", []);
   const [applications, setApplications] = usePageCache<Application[]>("admin:applications:rows", []);
   const [questions, setQuestions] = usePageCache<Database["public"]["Tables"]["event_questions"]["Row"][]>(
     "admin:applications:questions",
@@ -60,9 +63,20 @@ export function Applications() {
   const [loading, setLoading] = useState(!hasCached("admin:applications:events"));
   const [loadingRows, setLoadingRows] = useState(false);
 
-  // The event comes from the URL so the Events page can link straight to it and
-  // the choice survives a refresh.
+  // The target comes from the URL so the Events and Positions pages can link
+  // straight to it and the choice survives a refresh.
+  //
+  // Two params rather than one encoded `target`: the Events page already links
+  // in with ?event=<uuid>, and those links and anyone's bookmarks have to keep
+  // working. ?event= is read first, so an old link behaves exactly as it did.
   const eventId = searchParams.get("event") ?? "";
+  const positionId = eventId ? "" : (searchParams.get("position") ?? "");
+  const target: ApplicationTarget | null = eventId
+    ? { kind: "event", id: eventId }
+    : positionId
+      ? { kind: "position", id: positionId }
+      : null;
+  const targetColumn = target?.kind === "position" ? "position_id" : "event_id";
   const [statusFilter, setStatusFilter] = usePageCache("admin:applications:statusFilter", "all");
   const [search, setSearch] = usePageCache("admin:applications:search", "");
 
@@ -70,6 +84,9 @@ export function Applications() {
   const [cvLoadingId, setCvLoadingId] = useState<string | null>(null);
 
   const selectedEvent = events.find((e) => e.id === eventId) ?? null;
+  const selectedPosition = positions.find((p) => p.id === positionId) ?? null;
+  /** The chosen target's title, for the heading and the CSV filename. */
+  const selectedTitle = selectedEvent?.title ?? selectedPosition?.title ?? "";
 
   // Only events in application mode. An event whose toggle was turned off still
   // appears while it has applications, so past rounds stay reachable.
@@ -78,52 +95,73 @@ export function Applications() {
     [events]
   );
 
+  // Every position listing is an application target — a position has no
+  // "require application" toggle, because applications are its only mode — so
+  // all of them are listed, closed rounds included, for the same reason.
+  // Most recent deadline first, with open-ended listings leading.
+  const applicationPositions = useMemo(
+    () =>
+      [...positions].sort((a, b) => (b.closes_at ?? "9999").localeCompare(a.closes_at ?? "9999")),
+    [positions]
+  );
+
+  const hasAnyTarget = applicationEvents.length > 0 || applicationPositions.length > 0;
+
   useEffect(() => {
     let cancelled = false;
-    supabase
-      .from("events")
-      .select("*")
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) toast.error("Could not load events.");
-        else setEvents(data);
-        setLoading(false);
-      });
+    void (async () => {
+      const [eventsRes, positionsRes] = await Promise.all([
+        supabase.from("events").select("*"),
+        supabase.from("positions").select("*"),
+      ]);
+      if (cancelled) return;
+      if (eventsRes.error) toast.error("Could not load events.");
+      else setEvents(eventsRes.data);
+      if (positionsRes.error) toast.error("Could not load positions.");
+      else setPositions(positionsRes.data);
+      setLoading(false);
+    })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Default to the most recent application-mode event rather than showing an
-  // empty page with a dropdown nobody has touched.
+  // Default to the most recent application-mode event, or to a position when
+  // there are no such events, rather than showing an empty page with a dropdown
+  // nobody has touched.
   useEffect(() => {
-    if (!eventId && applicationEvents.length > 0) {
+    if (target) return;
+    if (applicationEvents.length > 0) {
       setSearchParams({ event: applicationEvents[0].id }, { replace: true });
+    } else if (applicationPositions.length > 0) {
+      setSearchParams({ position: applicationPositions[0].id }, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId, applicationEvents.length]);
+  }, [eventId, positionId, applicationEvents.length, applicationPositions.length]);
 
   useEffect(() => {
-    if (!eventId) {
+    if (!target) {
       setApplications([]);
       setQuestions([]);
       return;
     }
     let cancelled = false;
     setLoadingRows(true);
+    const column = targetColumn;
+    const id = target.id;
 
     const load = async () => {
       const [applicationsRes, questionsRes] = await Promise.all([
         supabase
           .from("event_applications")
           .select("*, application_answers(*)")
-          .eq("event_id", eventId)
+          .eq(column, id)
           .order("submitted_at", { ascending: false }),
         supabase
           .from("event_questions")
           .select("*")
-          .eq("event_id", eventId)
+          .eq(column, id)
           .order("position", { ascending: true })
           .order("created_at", { ascending: true }),
       ]);
@@ -140,7 +178,7 @@ export function Applications() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId]);
+  }, [eventId, positionId]);
 
   /**
    * event_applications isn't in useAdminMutation's ContentTable (only `status`
@@ -214,7 +252,11 @@ export function Applications() {
     try {
       await logApplicationAction(row.id, "view", null, {
         cv_path: row.cv_path,
+        // Both recorded, so a CV view says which listing it was against.
+        // audit_log.after is unconstrained jsonb, so this needs no migration and
+        // older entries keep reading.
         event_id: row.event_id,
+        position_id: row.position_id,
         access: mode,
       });
       const { data, error } = await supabase.storage
@@ -313,7 +355,7 @@ export function Applications() {
       application.email,
       ...questionColumns.map((column) => answerFor(application, column)),
     ]);
-    const slug = (selectedEvent?.title ?? "event").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const slug = (selectedTitle || "applications").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     downloadCsv(`applications-${slug || "event"}.csv`, header, rows);
   };
 
@@ -409,24 +451,44 @@ export function Applications() {
       <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Submissions</p>
       <h1 className="mt-[8px] text-[22px] font-medium text-foreground">Applications</h1>
 
-      {applicationEvents.length === 0 ? (
+      {!hasAnyTarget ? (
         <div className="mt-[24px] rounded-[16px] border border-border bg-card px-[24px] py-[48px] text-center text-[13px] text-muted-foreground">
-          No events are in application mode yet. Turn on “Require application” when editing an event.
+          Nothing takes applications yet. Turn on “Require application” when editing an event, or add a
+          listing under Opportunities.
         </div>
       ) : (
         <>
           <div className="mt-[24px] flex flex-wrap items-center gap-[8px]">
+            {/* One list, grouped, because an application is an application
+                whichever it was for. The value carries the kind so the two id
+                spaces can't be confused. */}
             <select
-              value={eventId}
-              onChange={(e) => setSearchParams({ event: e.target.value }, { replace: true })}
-              aria-label="Event"
+              value={target ? `${target.kind}:${target.id}` : ""}
+              onChange={(e) => {
+                const [kind, id] = e.target.value.split(":");
+                setSearchParams(kind === "position" ? { position: id } : { event: id }, { replace: true });
+              }}
+              aria-label="Event or opportunity"
               className="max-w-[320px] rounded-[10px] border border-input bg-input px-[12px] py-[10px] text-[13px]! text-foreground outline-hidden"
             >
-              {applicationEvents.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.title}
-                </option>
-              ))}
+              {applicationEvents.length > 0 && (
+                <optgroup label="Events">
+                  {applicationEvents.map((event) => (
+                    <option key={event.id} value={`event:${event.id}`}>
+                      {event.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {applicationPositions.length > 0 && (
+                <optgroup label="Opportunities">
+                  {applicationPositions.map((position) => (
+                    <option key={position.id} value={`position:${position.id}`}>
+                      {position.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             <div className="relative">
               <Search className="pointer-events-none absolute left-[12px] top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-muted-foreground" />

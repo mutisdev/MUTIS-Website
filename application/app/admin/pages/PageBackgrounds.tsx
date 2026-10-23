@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Crop as CropIcon, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { useToast } from "../components/Toast";
 import { UrlColumnImageUploader } from "../components/ImageUploader";
+import { ImageCropper } from "../components/ImageCropper";
+import { parseCrop, type HeroCrop } from "@/app/lib/heroCrop";
 import { usePageCache, hasCached } from "../usePageCache";
 
 type PageBackground = Database["public"]["Tables"]["page_backgrounds"]["Row"];
+type PageBackgroundUpdate = Database["public"]["Tables"]["page_backgrounds"]["Update"];
 
 const PAGES: { key: string; label: string }[] = [
   { key: "home", label: "Home" },
@@ -14,6 +17,7 @@ const PAGES: { key: string; label: string }[] = [
   { key: "previous-presidents", label: "Previous Presidents" },
   { key: "network", label: "Our Network" },
   { key: "events", label: "Events" },
+  { key: "opportunities", label: "Opportunities" },
   { key: "past-speakers", label: "Past Speakers" },
   { key: "meif", label: "MEIF" },
   { key: "wif", label: "WIF" },
@@ -49,19 +53,44 @@ export function PageBackgrounds() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setImage = async (pageKey: string, imageUrl: string) => {
+  // Which row's cropper is open, and whether its save is in flight.
+  const [cropping, setCropping] = useState<string | null>(null);
+  const [savingCrop, setSavingCrop] = useState(false);
+
+  const writeRow = async (pageKey: string, patch: PageBackgroundUpdate) => {
     const { data, error } = await supabase
       .from("page_backgrounds")
-      .update({ image_url: imageUrl || null })
+      .update(patch)
       .eq("page_key", pageKey)
       .select()
       .single();
-    if (error) {
+    if (error || !data) return null;
+    setRows((prev) => ({ ...prev, [pageKey]: data }));
+    return data;
+  };
+
+  const setImage = async (pageKey: string, imageUrl: string) => {
+    // A new photo invalidates any crop: those coordinates described the old one.
+    const data = await writeRow(pageKey, { image_url: imageUrl || null, crop: null });
+    if (!data) {
       toast.error("Could not update that page's background.");
       return;
     }
-    setRows((prev) => ({ ...prev, [pageKey]: data }));
     toast.success(imageUrl ? "Background updated." : "Reset to default.");
+    // Cropping is the natural next step once a photo lands.
+    if (imageUrl) setCropping(pageKey);
+  };
+
+  const saveCrop = async (pageKey: string, crop: HeroCrop | null) => {
+    setSavingCrop(true);
+    const data = await writeRow(pageKey, { crop });
+    setSavingCrop(false);
+    if (!data) {
+      toast.error("Could not save that crop.");
+      return;
+    }
+    setCropping(null);
+    toast.success(crop ? "Crop saved." : "Showing the whole image.");
   };
 
   return (
@@ -69,8 +98,9 @@ export function PageBackgrounds() {
       <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Content</p>
       <h1 className="mt-[8px] text-[22px] font-medium text-foreground">Page backgrounds</h1>
       <p className="mt-[8px] text-[13px] leading-[1.6] text-muted-foreground">
-        Upload a photo to override a page's default hero background. Pages left unset keep their
-        current look (the standard gradient, or their existing photo for Events/Home).
+        Upload a photo to override a page's default hero background, then choose which part of
+        it the banner shows. Pages left unset keep their current look (the standard gradient,
+        or their existing photo for Events/Home).
       </p>
 
       {loading ? (
@@ -86,14 +116,36 @@ export function PageBackgrounds() {
                 <UrlColumnImageUploader
                   bucket="page_background_images"
                   currentUrl={row?.image_url ?? ""}
-                  aspect="banner"
+                  aspect="contain"
+                  maxWidth={2000}
                   onUploaded={(url) => setImage(p.key, url)}
                 />
-                <span className="text-[14px] font-medium text-foreground">{p.label}</span>
+                <span className="flex-1 text-[14px] font-medium text-foreground">{p.label}</span>
+                {row?.image_url && (
+                  <button
+                    type="button"
+                    onClick={() => setCropping(p.key)}
+                    className="inline-flex shrink-0 items-center gap-[6px] rounded-[10px] border border-border px-[12px] py-[8px] text-[12px] font-medium text-foreground transition-colors hover:bg-white/5"
+                  >
+                    <CropIcon className="h-[13px] w-[13px]" />
+                    {parseCrop(row.crop) ? "Edit crop" : "Choose crop"}
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
+      )}
+
+      {cropping && rows[cropping]?.image_url && (
+        <ImageCropper
+          open
+          src={rows[cropping]!.image_url!}
+          initialCrop={parseCrop(rows[cropping]!.crop)}
+          saving={savingCrop}
+          onSave={(crop) => saveCrop(cropping, crop)}
+          onClose={() => setCropping(null)}
+        />
       )}
     </div>
   );

@@ -1,7 +1,8 @@
 import { type FormEvent } from "react";
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
-import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
+import { usePageBackground } from "@/app/hooks/usePageBackgrounds";
+import { PageHeroBackdrop } from "@/app/components/PageHeroBackdrop";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
@@ -13,7 +14,7 @@ import { submitForm, submitErrorMessage } from "@/app/lib/submitForm";
 
 export function Contact() {
   useReveal();
-  const bgImage = usePageBackgroundImage("contact");
+  const heroBackground = usePageBackground("contact");
   const { settings } = useSiteSettings();
   const { status, error, submitting, fail, succeed, onFormInput } = useFormStatus();
   const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
@@ -68,7 +69,8 @@ export function Contact() {
 
   return (
     <>
-      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
+      <section className="page-hero">
+        <PageHeroBackdrop {...heroBackground} />
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Contact</span></div>

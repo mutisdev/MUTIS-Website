@@ -3,7 +3,8 @@ import { Link } from "react-router";
 import { FileText } from "lucide-react";
 import { meifTeams } from "@/app/data/siteData";
 import { useReveal } from "@/app/hooks/useReveal";
-import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
+import { usePageBackground } from "@/app/hooks/usePageBackgrounds";
+import { PageHeroBackdrop } from "@/app/components/PageHeroBackdrop";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { Modal } from "@/app/components/Modal";
@@ -121,14 +122,15 @@ export function MEIF() {
   }, []);
 
   useReveal([meifTeams.length, fundManagers.length, managersLoading, portfolioLoading]);
-  const bgImage = usePageBackgroundImage("meif");
+  const heroBackground = usePageBackground("meif");
 
   const holdings = portfolio?.holdings ?? [];
   const accountTotals = portfolio?.account_totals ?? null;
 
   return (
     <>
-      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
+      <section className="page-hero">
+        <PageHeroBackdrop {...heroBackground} />
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>MEIF</span></div>

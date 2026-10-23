@@ -16,6 +16,7 @@ const navLinks: NavItem[] = [
   },
   { to: "/network", label: "Network" },
   { to: "/events", label: "Events" },
+  { to: "/opportunities", label: "Opportunities" },
   { to: "/past-speakers", label: "Past Speakers" },
   { to: "/meif", label: "MEIF" },
   { to: "/wif", label: "WIF" },

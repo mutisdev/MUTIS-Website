@@ -131,12 +131,19 @@ export function Events() {
       supabase.from("event_attendance_stats").select("event_id, signup_count, attendance_count, member_attendance_count"),
       // Counted here rather than added to event_attendance_stats so that view,
       // which the dashboard also reads, keeps its current shape.
-      supabase.from("event_applications").select("event_id"),
+      //
+      // event_applications also holds applications to positions, whose event_id
+      // is null, so they're excluded here rather than counted against some
+      // event — see 20261023114848_applications_target_positions.sql.
+      supabase.from("event_applications").select("event_id").not("event_id", "is", null),
     ]);
     if (applicationsRes.error) toast.error("Could not load application counts.");
     else {
       const counts = new Map<string, number>();
-      for (const row of applicationsRes.data) counts.set(row.event_id, (counts.get(row.event_id) ?? 0) + 1);
+      for (const row of applicationsRes.data) {
+        if (!row.event_id) continue;
+        counts.set(row.event_id, (counts.get(row.event_id) ?? 0) + 1);
+      }
       setApplicationCounts(counts);
     }
     if (eventsRes.error) toast.error("Could not load events.");
@@ -214,7 +221,7 @@ export function Events() {
       // Both loaded whether or not their toggle is currently on: a toggle hides
       // its content, it never deletes it, so an admin turning one back on must
       // find everything still here.
-      [questionRows, videoRow] = await Promise.all([loadEventQuestions(row.id), loadEventVideoDetails(row.id)]);
+      [questionRows, videoRow] = await Promise.all([loadEventQuestions({ kind: "event", id: row.id }), loadEventVideoDetails(row.id)]);
     } catch (err) {
       console.error("Failed to load application questions or video details", err);
       // Don't open at all: an empty builder or an empty joining block would
@@ -301,12 +308,12 @@ export function Events() {
       const videoState = { enabled: form.video_enabled, bodyText: form.video_body };
       if (editing === "new") {
         const created = await insertRow("events", values);
-        await saveQuestionDrafts(created.id, form.questions, savedQuestions, { insertRow, updateRow, deleteRow });
+        await saveQuestionDrafts({ kind: "event", id: created.id }, form.questions, savedQuestions, { insertRow, updateRow, deleteRow });
         await saveEventVideoDetails(created.id, videoState, null, session);
         toast.success("Event created.");
       } else if (editing) {
         await updateRow("events", editing.id, values, editing);
-        await saveQuestionDrafts(editing.id, form.questions, savedQuestions, { insertRow, updateRow, deleteRow });
+        await saveQuestionDrafts({ kind: "event", id: editing.id }, form.questions, savedQuestions, { insertRow, updateRow, deleteRow });
         await saveEventVideoDetails(editing.id, videoState, savedVideo, session);
         toast.success("Event updated.");
       }

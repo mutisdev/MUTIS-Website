@@ -29,6 +29,7 @@ const COLUMNS: { heading: string; links: { to: string; label: string }[] }[] = [
     heading: "Get Involved",
     links: [
       { to: "/join", label: "Join MUTIS" },
+      { to: "/opportunities", label: "Opportunities" },
       { to: "/sponsors", label: "Sponsors" },
       { to: "/attendance", label: "Event feedback" },
       { to: "/media", label: "Media" },

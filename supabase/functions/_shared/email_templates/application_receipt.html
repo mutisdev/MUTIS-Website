@@ -60,21 +60,10 @@
                         <td style="padding:6px 0; font-size:14px; color:#0B2545; font-weight:bold;">{{REFERENCE_CODE}}</td>
                       </tr>
                       <tr>
-                        <td style="padding:6px 0; font-size:14px; color:#666666;">Event</td>
+                        <td style="padding:6px 0; font-size:14px; color:#666666;">{{TARGET_LABEL}}</td>
                         <td style="padding:6px 0; font-size:14px; color:#0B2545; font-weight:bold;">{{EVENT_NAME}}</td>
                       </tr>
-                      <tr>
-                        <td style="padding:6px 0; font-size:14px; color:#666666;">Date</td>
-                        <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{EVENT_DATE}}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px 0; font-size:14px; color:#666666;">Time</td>
-                        <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{EVENT_TIME}}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px 0; font-size:14px; color:#666666;">Location</td>
-                        <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{EVENT_LOCATION}}</td>
-                      </tr>
+                      {{DETAIL_ROWS}}
                       <tr>
                         <td style="padding:6px 0; font-size:14px; color:#666666;">Name</td>
                         <td style="padding:6px 0; font-size:14px; color:#0B2545;">{{APPLICANT_NAME}}</td>
@@ -105,7 +94,7 @@
               <table role="presentation" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="border-radius:6px; border:1px solid #0B2545;">
-                    <a href="{{EVENT_URL}}" style="display:inline-block; padding:11px 27px; font-size:14px; font-weight:bold; color:#0B2545; text-decoration:none;">View event details</a>
+                    <a href="{{EVENT_URL}}" style="display:inline-block; padding:11px 27px; font-size:14px; font-weight:bold; color:#0B2545; text-decoration:none;">{{CTA_LABEL}}</a>
                   </td>
                 </tr>
               </table>

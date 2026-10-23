@@ -8,8 +8,14 @@ import {
   MAX_QUESTIONS_PER_EVENT,
   MIN_CHOICE_OPTIONS,
   parseQuestionOptions,
+  type ApplicationTarget,
   type QuestionType,
 } from "@shared/eventApplications";
+
+/** The column on event_questions that keys a target's rows. */
+function targetColumn(target: ApplicationTarget): "event_id" | "position_id" {
+  return target.kind === "event" ? "event_id" : "position_id";
+}
 
 /**
  * A question as the builder holds it while the admin is editing. `id` is null
@@ -38,19 +44,19 @@ export function emptyQuestionDraft(): QuestionDraft {
 type QuestionRow = Database["public"]["Tables"]["event_questions"]["Row"];
 
 /**
- * Loads an event's saved questions, in display order. Whole rows rather than
+ * Loads a target's saved questions, in display order. Whole rows rather than
  * just the editable fields, because they become the audit log's `before`
  * snapshot on an update or delete and that snapshot should be the row as it
  * actually was.
  *
- * Admins see these whether or not application mode is currently on, which is
- * what makes turning the toggle off non-destructive.
+ * Admins see these whether or not applications are currently open, which is
+ * what makes closing a round non-destructive.
  */
-export async function loadEventQuestions(eventId: string): Promise<QuestionRow[]> {
+export async function loadEventQuestions(target: ApplicationTarget): Promise<QuestionRow[]> {
   const { data, error } = await supabase
     .from("event_questions")
     .select("*")
-    .eq("event_id", eventId)
+    .eq(targetColumn(target), target.id)
     .order("position", { ascending: true })
     .order("created_at", { ascending: true });
   if (error) throw error;
@@ -80,11 +86,22 @@ export function draftsFromRows(rows: QuestionRow[]): QuestionDraft[] {
  * constraints); this exists so the admin is told which row is wrong rather than
  * getting a constraint violation.
  */
-export function validateQuestionDrafts(drafts: QuestionDraft[]): { form?: string; byKey: Record<string, string> } {
+export function validateQuestionDrafts(
+  drafts: QuestionDraft[],
+  kind: ApplicationTarget["kind"] = "event",
+): { form?: string; byKey: Record<string, string> } {
   const byKey: Record<string, string> = {};
 
   if (drafts.length === 0) {
-    return { form: "Add at least one question, or turn off “Require application”.", byKey };
+    // A position has no "Require application" toggle to turn off — applications
+    // are the only mode it has — so it is told the other way out.
+    return {
+      form:
+        kind === "event"
+          ? "Add at least one question, or turn off “Require application”."
+          : "Add at least one question, or close applications for this opportunity.",
+      byKey,
+    };
   }
   if (drafts.length > MAX_QUESTIONS_PER_EVENT) {
     return { form: `That's more than ${MAX_QUESTIONS_PER_EVENT} questions — applicants won't finish it.`, byKey };
@@ -183,7 +200,7 @@ type Mutation = {
  * unique index on (event_id, position) — the intermediate states are legal.
  */
 export async function saveQuestionDrafts(
-  eventId: string,
+  target: ApplicationTarget,
   drafts: QuestionDraft[],
   originalRows: QuestionRow[],
   mutation: Mutation,
@@ -201,7 +218,10 @@ export async function saveQuestionDrafts(
 
   for (const [index, draft] of drafts.entries()) {
     if (!draft.id) {
-      await mutation.insertRow("event_questions", { event_id: eventId, ...rowValues(draft, index) });
+      await mutation.insertRow("event_questions", {
+        [targetColumn(target)]: target.id,
+        ...rowValues(draft, index),
+      });
       continue;
     }
     const previous = originalById.get(draft.id);

@@ -1,5 +1,7 @@
-// Everything both sides need to agree on for event application mode (events
-// with requires_application = true): limits, question shapes, CV validation.
+// Everything both sides need to agree on for application mode: limits,
+// question shapes, CV validation. Applies to an event with
+// requires_application = true and to a position listing on the Opportunities
+// page, which share one pipeline — see ApplicationTarget below.
 //
 // Imported by the submit-application and purge-event-cvs Edge Functions (Deno)
 // and by the website (via the `@shared` alias in vite.config.ts /
@@ -11,8 +13,11 @@
 export const CV_BUCKET = "event-cvs";
 
 /**
- * How long a CV is kept after its event starts. THIS IS THE ONLY PLACE THIS
- * NUMBER LIVES. purge-event-cvs computes its cut-off from it, the public
+ * How long a CV is kept after its retention clock starts: an event's start
+ * time, a position's closing date, or — for a position left open-ended — the
+ * submission itself. public.application_cv_retention works out which anchor
+ * applies; this is how long after it. THIS IS THE ONLY PLACE THIS NUMBER
+ * LIVES. purge-event-cvs computes its cut-off from it, the public
  * privacy notice quotes it, and the admin page explains it; the pg_cron
  * schedule only says how often to sweep, never how old is too old, so changing
  * the value here is enough.
@@ -41,6 +46,8 @@ export const MAX_QUESTION_PROMPT_CHARS = 300;
 export const MAX_CHOICE_OPTION_CHARS = 120;
 export const MAX_CHOICE_OPTIONS = 20;
 export const MAX_ANSWER_CHARS = 2000;
+/** Caps one target's question list — an event's or a position's. Keeps the
+ * name it shipped with, since two client files import it by name. */
 export const MAX_QUESTIONS_PER_EVENT = 30;
 /** A single-choice question is meaningless with fewer than two options. */
 export const MIN_CHOICE_OPTIONS = 2;
@@ -49,12 +56,38 @@ export const APPLICANT_NAME_MAX_CHARS = 200;
 export const CV_FILE_NAME_MAX_CHARS = 255;
 
 /**
- * Per-IP and per-(email, event) submission windows, enforced by
+ * Per-IP and per-(email, target) submission windows, enforced by
  * public.consume_application_rate_limit. The IP is hashed before it reaches the
  * database, so no raw visitor address is ever stored.
  */
 export const RATE_LIMIT_IP = { limit: 5, windowSeconds: 60 * 60 };
 export const RATE_LIMIT_EMAIL = { limit: 3, windowSeconds: 24 * 60 * 60 };
+
+// ---- what an application is for ----
+
+/**
+ * The two things that can be applied to. An event in application mode
+ * (events.requires_application) or a position listing on the Opportunities
+ * page; both store their applications in event_applications, keyed by whichever
+ * of event_id / position_id is set.
+ */
+export type ApplicationTarget =
+  | { kind: "event"; id: string }
+  | { kind: "position"; id: string };
+
+/**
+ * Bucket key for public.consume_application_rate_limit.
+ *
+ * The event form is kept byte-identical to the one shipped in
+ * 20261002162955_submit_event_application.sql, so adding positions doesn't
+ * silently reset every live counter. A position carries a literal `position:`
+ * segment, which a uuid can never be mistaken for.
+ */
+export function emailRateLimitBucket(target: ApplicationTarget, email: string): string {
+  return target.kind === "event"
+    ? `email:${target.id}:${email}`
+    : `email:position:${target.id}:${email}`;
+}
 
 // ---- questions ----
 
@@ -131,10 +164,20 @@ export function questionsFingerprint(questions: ReadonlyArray<{ id: string }>): 
 // ---- CV file ----
 
 /** Where a CV is stored. Derived from ids rather than the uploaded file name,
- * so a hostile name can't escape its event's folder. A CHECK constraint on
- * event_applications.cv_path enforces the same shape in the database. */
-export function cvObjectPath(eventId: string, applicationId: string): string {
-  return `${eventId}/${applicationId}.pdf`;
+ * so a hostile name can't escape its target's folder. A CHECK constraint on
+ * event_applications.cv_path enforces the same shape in the database.
+ *
+ * An event's objects keep the bare `<event_id>/` prefix they have always had,
+ * so nothing already uploaded moves. A position's sit under `positions/`,
+ * which can never collide with an event folder because a uuid's text form is
+ * 36 characters with hyphens and can never be the literal "positions".
+ *
+ * Takes the discriminated target rather than a bare id on purpose: an event id
+ * and a position id are both plain uuid strings, so a positional first
+ * argument is exactly the mix-up worth designing out. */
+export function cvObjectPath(target: ApplicationTarget, applicationId: string): string {
+  const prefix = target.kind === "event" ? target.id : `positions/${target.id}`;
+  return `${prefix}/${applicationId}.pdf`;
 }
 
 /** The uploaded name, kept only to show the applicant and the admin which file

@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
-import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
+import { usePageBackground } from "@/app/hooks/usePageBackgrounds";
+import { PageHeroBackdrop } from "@/app/components/PageHeroBackdrop";
 import { usePodcastEpisodes } from "@/app/hooks/usePodcastEpisodes";
 import { SpotifyEmbedList } from "@/app/components/SpotifyEmbedCard";
 
@@ -15,11 +16,12 @@ export function Media() {
   const { episodes, isLoading } = usePodcastEpisodes();
 
   useReveal([MEDIA_LINKS.length, episodes.length, isLoading]);
-  const bgImage = usePageBackgroundImage("media");
+  const heroBackground = usePageBackground("media");
 
   return (
     <>
-      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
+      <section className="page-hero">
+        <PageHeroBackdrop {...heroBackground} />
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Media</span></div>

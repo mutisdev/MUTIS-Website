@@ -40,7 +40,7 @@ export function EventSignup() {
     loading: questionsLoading,
     error: questionsError,
     fingerprint,
-  } = useEventQuestions(event?.id, requiresApplication);
+  } = useEventQuestions(event ? { kind: "event", id: event.id } : undefined, requiresApplication);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,7 +180,7 @@ export function EventSignup() {
     }
     return (
       <ApplicationForm
-        eventId={event.id}
+        target={{ kind: "event", id: event.id }}
         questions={questions}
         fingerprint={fingerprint}
         onSubmitted={(data, emailed) => setReceipt({ data, emailed })}
