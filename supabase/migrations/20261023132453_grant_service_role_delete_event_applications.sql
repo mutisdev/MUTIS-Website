@@ -1,0 +1,26 @@
+-- Reason: deleting an application from the admin panel failed halfway — the CV was removed but the row could not be, because the function doing the work had no permission to delete it.
+--
+-- 20261002161431_create_event_applications.sql granted `select, delete` to
+-- authenticated and `select, insert` to service_role, which was right at the
+-- time: deletion was something an admin session did directly through PostgREST,
+-- and no server-side code deleted applications at all.
+--
+-- The delete-application Edge Function changed that. It has to run as
+-- service_role, because the CV sits in the private event-cvs bucket whose only
+-- policy is "admin read event-cvs" — SELECT and nothing else — so no admin
+-- session can remove the object. But service_role was never granted DELETE on
+-- this table, so the function deleted the CV and then failed on the row with
+-- SQLSTATE 42501, leaving the application with cv_path nulled by its own
+-- recovery path.
+--
+-- No RLS change is needed: service_role bypasses RLS, and the admin-only
+-- DELETE policy stays exactly as it is for the authenticated path. This is the
+-- table privilege PostgREST checks before RLS is ever consulted — the same
+-- reason 20260917150000_grant_service_role_form_inserts.sql exists.
+--
+-- application_answers needs nothing: its FK to event_applications is ON DELETE
+-- CASCADE, and PostgreSQL performs a referential action as the constraint's
+-- owner rather than as the deleting role, so the answers go without the caller
+-- holding DELETE on that table.
+
+grant delete on table public.event_applications to service_role;

@@ -85,6 +85,9 @@ export function Applications() {
   const [cvLoadingId, setCvLoadingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Application | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Bumped to force the row effect below to re-run. Used after a delete that
+  // failed part-way, where the stored row may no longer match what's on screen.
+  const [reloadKey, setReloadKey] = useState(0);
 
   const selectedEvent = events.find((e) => e.id === eventId) ?? null;
   const selectedPosition = positions.find((p) => p.id === positionId) ?? null;
@@ -181,7 +184,7 @@ export function Applications() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId, positionId]);
+  }, [eventId, positionId, reloadKey]);
 
   /**
    * event_applications isn't in useAdminMutation's ContentTable (only `status`
@@ -310,7 +313,25 @@ export function Applications() {
         { body: { application_id: pendingDelete.id } }
       );
       if (error || data?.error) {
-        toast.error(data?.error ?? "Could not delete that application.");
+        // invoke() leaves `data` null on a non-2xx and only reports "non-2xx
+        // status code", so the useful message — which of the two steps failed,
+        // and whether anything was removed — has to be read back off the
+        // response itself. Same approach as ManageAdmins.tsx.
+        let message = data?.error ?? error?.message ?? "Could not delete that application.";
+        const response = (error as { context?: Response } | null)?.context;
+        if (response && typeof response.json === "function") {
+          try {
+            const body = await response.json();
+            if (body?.error) message = body.error;
+          } catch {
+            // Not JSON — keep the fallback above.
+          }
+        }
+        toast.error(message);
+        // The function may have deleted the CV before failing on the row, in
+        // which case cv_path is now null. Refetch so the table stops offering a
+        // CV that isn't there.
+        setReloadKey((k) => k + 1);
         return;
       }
       // Dropped locally rather than refetching: the row is gone, and a refetch
