@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
-import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
+import { usePageBackground } from "@/app/hooks/usePageBackgrounds";
+import { PageHeroBackdrop } from "@/app/components/PageHeroBackdrop";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { useFormStatus } from "@/app/hooks/useFormStatus";
 import { FormFeedback } from "@/app/components/FormFeedback";
@@ -153,7 +154,7 @@ export function Sponsors() {
   const pastSponsors = sponsors.filter((row) => row.is_past);
 
   useReveal([currentSponsors.length, pastSponsors.length, isLoading, loadError]);
-  const bgImage = usePageBackgroundImage("sponsors");
+  const heroBackground = usePageBackground("sponsors");
 
   const onSponsorSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -199,7 +200,8 @@ export function Sponsors() {
 
   return (
     <>
-      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
+      <section className="page-hero">
+        <PageHeroBackdrop {...heroBackground} />
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Sponsors</span></div>

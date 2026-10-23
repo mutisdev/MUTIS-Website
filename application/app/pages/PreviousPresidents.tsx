@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
-import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
+import { usePageBackground } from "@/app/hooks/usePageBackgrounds";
+import { PageHeroBackdrop } from "@/app/components/PageHeroBackdrop";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
@@ -73,11 +74,12 @@ export function PreviousPresidents() {
   }, []);
 
   useReveal([presidents.length, isLoading, loadError]);
-  const bgImage = usePageBackgroundImage("previous-presidents");
+  const heroBackground = usePageBackground("previous-presidents");
 
   return (
     <>
-      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
+      <section className="page-hero">
+        <PageHeroBackdrop {...heroBackground} />
         <div className="page-hero-inner">
           <div>
             <div className="crumb">

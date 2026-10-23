@@ -1,15 +1,17 @@
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
-import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
+import { usePageBackground } from "@/app/hooks/usePageBackgrounds";
+import { PageHeroBackdrop } from "@/app/components/PageHeroBackdrop";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 
 export function Join() {
   useReveal();
-  const bgImage = usePageBackgroundImage("join");
+  const heroBackground = usePageBackground("join");
   const { settings } = useSiteSettings();
   return (
     <>
-      <section className="page-hero" style={heroBackgroundStyle(bgImage)}>
+      <section className="page-hero">
+        <PageHeroBackdrop {...heroBackground} />
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Join</span></div>

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Helmet } from "react-helmet-async";
 import { useReveal } from "@/app/hooks/useReveal";
-import { usePageBackgroundImage, heroBackgroundStyle } from "@/app/hooks/usePageBackgrounds";
+import { usePageBackground } from "@/app/hooks/usePageBackgrounds";
+import { PageHeroBackdrop } from "@/app/components/PageHeroBackdrop";
 import { htmlToExcerpt } from "@/app/lib/htmlExcerpt";
 import { SITE_URL } from "@/app/hooks/usePageMeta";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
@@ -93,7 +94,7 @@ export function Events() {
     .sort((a, b) => eventEndTime(b) - eventEndTime(a));
 
   useReveal([events.length, isLoading, loadError]);
-  const bgImage = usePageBackgroundImage("events");
+  const heroBackground = usePageBackground("events");
 
   // Event JSON-LD, built live from the same Supabase query above — not
   // hardcoded. Each event now has its own page at /events/:id/signup, so
@@ -126,7 +127,8 @@ export function Events() {
           <script type="application/ld+json">{JSON.stringify(eventsJsonLd)}</script>
         </Helmet>
       )}
-      <section className="page-hero page-hero-events" style={heroBackgroundStyle(bgImage)}>
+      <section className="page-hero page-hero-events">
+        <PageHeroBackdrop {...heroBackground} />
         <div className="page-hero-inner">
           <div>
             <div className="crumb"><Link to="/">MUTIS</Link><span>/</span><span>Events</span></div>

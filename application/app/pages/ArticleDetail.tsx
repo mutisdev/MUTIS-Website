@@ -7,6 +7,7 @@ import { PageMeta } from "@/app/components/PageMeta";
 import { DEFAULT_DESCRIPTION } from "@/app/hooks/usePageMeta";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { PageHeroBackdrop } from "@/app/components/PageHeroBackdrop";
 import { DocumentViewer } from "@/app/components/DocumentViewer";
 
 type ArticleRow = Tables<"articles">;
@@ -118,18 +119,8 @@ export function ArticleDetail() {
           image: article.cover_image_url ?? undefined,
         }}
       />
-      <section
-        className="page-hero page-hero-article"
-        style={
-          article.cover_image_url
-            ? {
-                backgroundImage: `linear-gradient(180deg, rgba(2,5,13,0.5) 0%, rgba(2,5,13,0.85) 100%), url(${article.cover_image_url})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }
-            : undefined
-        }
-      >
+      <section className="page-hero page-hero-article">
+        <PageHeroBackdrop src={article.cover_image_url} />
         <div className="page-hero-inner" style={{ gridTemplateColumns: "1fr" }}>
           <div>
             <div className="crumb">

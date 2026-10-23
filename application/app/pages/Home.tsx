@@ -11,7 +11,8 @@ import { useSiteSettings } from "../hooks/useSiteSettings";
 import { UpcomingEventBanner } from "../components/UpcomingEventBanner";
 import { htmlToExcerpt } from "../lib/htmlExcerpt";
 import { FreshersFairBanner } from "../components/FreshersFairBanner";
-import { usePageBackgroundImage } from "../hooks/usePageBackgrounds";
+import { usePageBackground } from "../hooks/usePageBackgrounds";
+import { cropImageStyle } from "../lib/heroCrop";
 import type { Tables } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
@@ -82,15 +83,23 @@ function Hero() {
   const intro = 1;
   const fgOpacity = 1;
   const { settings } = useSiteSettings();
-  const bgImage = usePageBackgroundImage("home");
+  const heroBackground = usePageBackground("home");
 
   return (
     <section className="pm-hero">
-      {/* Background image (static, no parallax) */}
-      <div
-        className="pm-hero-bg"
-        style={{ transform: "scale(1.1)", ...(bgImage ? { backgroundImage: `url(${bgImage})` } : {}) }}
-      />
+      {/* Background image (static, no parallax). Only an admin-chosen crop switches this
+          to the <img> layer; without one the hero keeps its own background-image and its
+          `center 30%` framing, exactly as before. */}
+      {heroBackground.crop && heroBackground.src ? (
+        <div className="page-hero-photo">
+          <img src={heroBackground.src} alt="" decoding="async" style={cropImageStyle(heroBackground.crop)} />
+        </div>
+      ) : (
+        <div
+          className="pm-hero-bg"
+          style={heroBackground.src ? { backgroundImage: `url(${heroBackground.src})` } : undefined}
+        />
+      )}
       <div className="pm-hero-overlay" />
       <div className="pm-hero-grain" aria-hidden="true" />
 

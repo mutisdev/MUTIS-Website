@@ -9,6 +9,11 @@
 .page-hero {
   position: relative;
   padding: 148px 64px 80px;
+  /* A flex column with a single in-flow child, so on its own this changes nothing;
+     it is what lets the photo hero below centre its heading vertically. */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   overflow: hidden;
   border-bottom: 1px solid rgba(255,255,255,0.05);
   background: linear-gradient(180deg, #050e1e 0%, var(--ink) 100%);
@@ -29,11 +34,14 @@
 }
 .page-hero-events::before { display: none; }
 
-/* Article detail page — cover image supplied inline via style, when present */
+/* Article detail page — cover image becomes the hero backdrop, when present */
 .page-hero-article::before { display: none; }
 
 .page-hero-inner {
   position: relative; z-index: 1;
+  /* width:100% because .page-hero is a flex column and the auto side margins below
+     would otherwise suppress the default stretch, shrinking this to its content. */
+  width: 100%;
   max-width: 1240px; margin: 0 auto;
   display: grid; grid-template-columns: 1.3fr 1fr;
   gap: 80px; align-items: end;
@@ -67,6 +75,64 @@
 .crumb a { color: inherit; text-decoration: none; transition: color 0.2s ease; }
 .crumb a:hover { color: #f0f4f8; }
 .crumb span { color: rgba(255,255,255,0.2); }
+
+/* ==========================================================
+   Photo hero — when an admin photo is set, this section becomes the same kind of
+   hero the homepage uses: full-bleed image behind everything, at the same size.
+   PageHeroBackdrop supplies the photo layer plus .pm-hero-overlay/.pm-hero-grain (those
+   two defined in mutis-base.css), so the look is shared rather than reimplemented here. A page with
+   no photo renders no backdrop, none of this engages, and the plain bar is unchanged.
+   ========================================================== */
+.page-hero:has(.page-hero-photo) {
+  /* Shorter than the homepage's full 100vh — this is a page banner, not a landing
+     screen — with a floor for short viewports and a cap for very tall ones. */
+  min-height: clamp(420px, 68vh, 760px);
+  /* Heading stays at the foot of the bar (the .page-hero default), which is both the
+     natural place for a banner title and where the overlay is densest — the top of the
+     photo is often its brightest part now that the crop is taken off the bottom. */
+  padding-top: 110px;
+  padding-bottom: 80px;
+}
+/* The photo's own overlay provides the depth; the gradient bar's radial glow would
+   only wash it out, exactly as it is suppressed for Events and article heroes. */
+.page-hero:has(.page-hero-photo)::before { display: none; }
+/* Above .pm-hero-grain (z-index 2), matching .pm-hero-content on the homepage. */
+.page-hero:has(.page-hero-photo) .page-hero-inner { z-index: 5; }
+
+/* The homepage's scrim is built to carry a full masthead, stats and two buttons, so it
+   runs 0.82–0.97 and leaves the photo almost black. A subpage hero only has to keep a
+   breadcrumb, title and one line of subtitle legible, so it uses a lighter version of
+   the same two-gradient shape — roughly half the density, enough contrast for the text
+   and enough left over to actually see the photograph. */
+.page-hero:has(.page-hero-photo) .pm-hero-overlay {
+  background:
+    linear-gradient(100deg,
+      rgba(2,5,13,0.58) 0%,
+      rgba(2,5,13,0.40) 45%,
+      rgba(2,5,13,0.50) 78%,
+      rgba(2,5,13,0.64) 100%
+    ),
+    linear-gradient(180deg, rgba(2,5,13,0.28) 0%, rgba(2,5,13,0.0) 45%, rgba(2,5,13,0.52) 100%);
+}
+
+/* With the scrim this light, parts of the photo behind the text can be bright, so the
+   type carries its own contrast instead: a soft shadow plus a brighter subtitle. This
+   keeps the heading readable wherever it lands without darkening the image again. */
+.page-hero:has(.page-hero-photo) .crumb,
+.page-hero:has(.page-hero-photo) .page-eyebrow,
+.page-hero:has(.page-hero-photo) .page-title,
+.page-hero:has(.page-hero-photo) .page-sub {
+  text-shadow: 0 1px 3px rgba(2,5,13,0.55), 0 2px 26px rgba(2,5,13,0.7);
+}
+.page-hero:has(.page-hero-photo) .page-sub { color: rgba(255,255,255,0.94); }
+.page-hero:has(.page-hero-photo) .crumb { color: rgba(255,255,255,0.78); }
+
+@media (max-width: 900px) {
+  .page-hero:has(.page-hero-photo) { padding-top: 96px; padding-bottom: 60px; }
+}
+@media (max-width: 480px) {
+  .page-hero:has(.page-hero-photo) { padding-top: 88px; padding-bottom: 52px; }
+}
 
 /* ==========================================================
    Page sections

@@ -313,18 +313,40 @@ img { display: block; max-width: 100%; }
   padding-top: 110px; padding-bottom: 80px;
 }
 
-/* Background image with parallax parent.
+/* Background image. The scroll/parallax effect this used to serve was removed, so the
+   layer sits flush (inset: 0) rather than overhanging — the old -12%/-2% bleed was
+   parallax travel room and now only cropped the image for nothing.
    To swap in a past-event photo, change ONLY the --hero-image value below
    (drop the file in /public). Placeholder until the event photo is provided. */
 :root {
   --hero-image: url("/WebsiteMainbg.webp");
 }
 .pm-hero-bg {
-  position: absolute; inset: -12% -2%;
-  z-index: 0; will-change: transform;
+  position: absolute; inset: 0;
+  z-index: 0;
   background-image: var(--hero-image);
   background-size: cover;
   background-position: center 30%;
+}
+
+/* Alternative photo layer, used by the subpage heroes and by this one once an admin has
+   cropped the image. The <img> inside is positioned by cropImageStyle (app/lib/heroCrop):
+   with no crop it fills the box anchored to the top; with a crop its box is scaled and
+   offset so the selection lands exactly on the hero, and object-fit: cover centre-trims
+   whatever doesn't fit the hero's shape. */
+.page-hero-photo {
+  position: absolute; inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.page-hero-photo img {
+  position: absolute;
+  object-fit: cover;
+  /* Overrides the global `img { max-width: 100% }` reset above: a crop deliberately sizes
+     this layer larger than the hero (its box is the whole photo, scaled so the selection
+     alone fills the bar), and the cap would clamp it back and leave only a sliver. */
+  max-width: none;
+  max-height: none;
 }
 
 /* Deep cinematic overlay - directional, darker on right */
