@@ -1,10 +1,5 @@
 # SEO
 
-> See `SEO-AUDIT.md`, `SEO-PLAN.md`, and `SEO-CHANGELOG.md` at the repo root for the full
-> audit, prioritized task list, and change log from the most recent SEO sweep. This file is
-> a short reference to the current implementation; those three are the source of truth for
-> *why* things are the way they are.
-
 ## What's implemented
 
 ### Static (`index.html`)
@@ -34,8 +29,8 @@ with silent duplicate tags (browsers/crawlers will just read whichever comes fir
 - `application/app/components/OrganizationJsonLd.tsx` — sitewide `Organization` JSON-LD,
   sourced from `useSiteSettings` (the `site_settings` table). Rendered from `Root()`.
 - `Event` JSON-LD on `Events.tsx`, built from the page's own Supabase `events` query. There's
-  no `/events/:id` route, so each entry's `url` points at `/events` itself — see
-  `SEO-AUDIT.md` section 3.1 for that limitation.
+  no `/events/:id` route, so each entry's `url` points at `/events` itself, which is a known
+  limitation.
 
 ### Crawlability
 - [`public/robots.txt`](public/robots.txt) — allows all except `/admin`, points to the sitemap.
@@ -62,7 +57,7 @@ The production domain is `https://www.mutisfinancesociety.com`. If it ever chang
   social-share scrapers still only ever see `index.html`'s static tags (i.e. the homepage's).
   The real fix is prerendering (e.g. a build-time static-HTML-per-route step) or migrating to
   SSR (Next.js, or react-router's framework/SSR mode) — a meaningful engineering investment,
-  not a drop-in change. See `SEO-AUDIT.md` 1.1.
+  not a drop-in change.
 - Generate a real social share image (`og:image`) sized 1200×630 instead of the logo.
 - No `BreadcrumbList` JSON-LD yet — judged low-value relative to cost given the site's shallow
   navigation depth; revisit if the site grows deeper nesting.
