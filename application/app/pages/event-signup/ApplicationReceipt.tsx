@@ -121,8 +121,12 @@ export function ApplicationReceipt({ receipt, emailed }: ApplicationReceiptProps
           Print or save as PDF
           <span className="arrow" />
         </button>
-        <Link to="/events" className="btn btn-ghost" style={{ textDecoration: "none" }}>
-          Back to events
+        <Link
+          to={receipt.target.kind === "event" ? "/events" : "/opportunities"}
+          className="btn btn-ghost"
+          style={{ textDecoration: "none" }}
+        >
+          {receipt.target.kind === "event" ? "Back to events" : "Back to opportunities"}
           <span className="arrow" />
         </Link>
       </div>
