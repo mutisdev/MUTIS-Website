@@ -1,0 +1,26 @@
+-- Reason: applying for a position failed with "permission denied for table positions" because the lock that stops an admin closing a round mid-submission needs more than read access.
+--
+-- submit_application runs `select ... from public.positions ... for share` to
+-- hold the listing still while an application is written. In PostgreSQL,
+-- SELECT ... FOR SHARE and FOR UPDATE require the UPDATE privilege, not just
+-- SELECT (see the UPDATE entry under GRANT). submit_application is
+-- security invoker and its only caller is the submit-application Edge Function
+-- running as service_role, which had SELECT on this table and nothing more, so
+-- every position application died on SQLSTATE 42501.
+--
+-- Why the event path never hit this: public.events happens to carry a
+-- column-level `grant update (reminder_sent_at) ... to service_role` from
+-- 20260922103605_restore_event_emails.sql, added for the reminder job and
+-- nothing to do with locking. A column-level UPDATE grant is enough to satisfy
+-- FOR SHARE, so the event branch has been relying on that grant by accident
+-- since application mode shipped. Anyone removing that grant would break event
+-- applications, with nothing in that migration to warn them.
+--
+-- Granted on updated_at specifically, rather than on the whole table, so the
+-- service role still cannot rewrite a listing's title, description, closing
+-- date or publish state. It is the narrowest grant that makes the lock legal,
+-- and it mirrors the reminder_sent_at precedent. submit_application never
+-- actually writes this column — the privilege exists only so the row can be
+-- locked for reading.
+
+grant update (updated_at) on table public.positions to service_role;
