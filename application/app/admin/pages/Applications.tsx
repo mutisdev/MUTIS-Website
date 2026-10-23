@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Download, FileText, Loader2, Search, ShieldAlert } from "lucide-react";
+import { Download, FileText, Loader2, Search, ShieldAlert, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import {
@@ -16,6 +16,7 @@ import {
 import { useToast } from "../components/Toast";
 import { useAuth } from "../AuthProvider";
 import { Drawer } from "../components/Drawer";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DataTable, downloadCsv, type DataTableColumn } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { usePageCache, hasCached } from "../usePageCache";
@@ -82,6 +83,8 @@ export function Applications() {
 
   const [detail, setDetail] = useState<Application | null>(null);
   const [cvLoadingId, setCvLoadingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Application | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const selectedEvent = events.find((e) => e.id === eventId) ?? null;
   const selectedPosition = positions.find((p) => p.id === positionId) ?? null;
@@ -286,6 +289,50 @@ export function Applications() {
   };
 
   /**
+   * Deletes an application outright: the CV file, the answers and the row.
+   *
+   * Goes through the delete-application Edge Function rather than
+   * supabase.from(...).delete() even though an admin holds DELETE on the table,
+   * because the CV lives in a private bucket whose only policy is SELECT — no
+   * session can remove the object. Deleting just the row would leave the PDF in
+   * the bucket forever, since purge-event-cvs finds expired CVs through the
+   * application row and would never see that file again.
+   *
+   * Unlike a status change this is irreversible and takes the answers with it,
+   * which is why the confirm dialog makes the admin type the applicant's name.
+   */
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<{ error?: string; audited?: boolean }>(
+        "delete-application",
+        { body: { application_id: pendingDelete.id } }
+      );
+      if (error || data?.error) {
+        toast.error(data?.error ?? "Could not delete that application.");
+        return;
+      }
+      // Dropped locally rather than refetching: the row is gone, and a refetch
+      // would also throw away the admin's current search and status filter.
+      setApplications((prev) => prev.filter((r) => r.id !== pendingDelete.id));
+      setDetail((prev) => (prev && prev.id === pendingDelete.id ? null : prev));
+      setPendingDelete(null);
+      // The function writes the audit entry itself, with the full row and its
+      // answers as the before-snapshot — the only copy that now exists.
+      toast.success(
+        data?.audited === false
+          ? "Application deleted, but the audit entry failed to save."
+          : "Application deleted."
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete that application.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  /**
    * The question columns for the current event: the live questions in position
    * order, then any prompt that only survives in historic answers because its
    * question was deleted. Answers are matched by question_id where it still
@@ -358,6 +405,8 @@ export function Applications() {
     const slug = (selectedTitle || "applications").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     downloadCsv(`applications-${slug || "event"}.csv`, header, rows);
   };
+
+  const pendingAnswerCount = pendingDelete ? orderedAnswers(pendingDelete).length : 0;
 
   const columns: DataTableColumn<Application>[] = [
     {
@@ -435,6 +484,24 @@ export function Applications() {
         ) : (
           <span className="text-[12px] text-muted-foreground">Deleted</span>
         ),
+    },
+    {
+      key: "actions",
+      label: "",
+      render: (r) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setPendingDelete(r);
+          }}
+          aria-label={`Delete ${r.name}'s application`}
+          title="Delete this application"
+          className="rounded-[8px] p-[6px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+        >
+          <Trash2 className="h-[14px] w-[14px]" />
+        </button>
+      ),
     },
   ];
 
@@ -648,9 +715,45 @@ export function Applications() {
                 );
               })}
             </div>
+
+            {/* Last thing in the drawer, after the answers: deleting is a
+                decision to take having read the application, not before. */}
+            <div className="border-t border-border pt-[16px]">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(detail)}
+                className="inline-flex items-center gap-[6px] rounded-[10px] border border-destructive/40 px-[14px] py-[9px] text-[13px]! font-medium text-destructive transition-colors hover:bg-destructive/10"
+              >
+                <Trash2 className="h-[14px] w-[14px]" />
+                Delete application
+              </button>
+              <p className="mt-[8px] text-[11px] leading-[1.6] text-muted-foreground">
+                Removes the answers and the CV as well. Keep it and mark it rejected instead if you might need
+                to look back at it.
+              </p>
+            </div>
           </div>
         )}
       </Drawer>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this application?"
+        description={
+          `${pendingDelete?.name ?? ""}'s application, their ${pendingAnswerCount} answer` +
+          `${pendingAnswerCount === 1 ? "" : "s"}` +
+          `${pendingDelete?.cv_path ? " and their CV" : ""} will be permanently deleted. ` +
+          "This can't be undone, and the applicant isn't told. " +
+          "Only the audit log entry will remain."
+        }
+        confirmLabel={deleting ? "Deleting…" : "Delete"}
+        destructive
+        // Typed out in full: this is irreversible and takes someone's answers
+        // and CV with it, so it should not be one stray click away.
+        requireText={pendingDelete?.name}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

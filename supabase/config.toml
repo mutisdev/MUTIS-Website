@@ -444,6 +444,11 @@ static_files = ["./functions/_shared/email_templates/*.html"]
 # event page already shows.
 verify_jwt = false
 
+[functions.delete-application]
+# verify_jwt stays on; the function additionally checks the caller has an
+# admin_users row before deleting anyone's application. It needs the service
+# role because the event-cvs bucket has no delete policy for any session.
+
 [functions.create-invite]
 # verify_jwt stays on; the function additionally checks the caller has an
 # admin_users row before creating anyone's account.
