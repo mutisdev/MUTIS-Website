@@ -1,3 +1,4 @@
+import type { ApplicationTarget } from "@shared/eventApplications";
 import { CAPTCHA_FAILED_MESSAGE } from "@/app/hooks/useCaptcha";
 import {
   formatErrorRef,
@@ -16,7 +17,12 @@ export interface ApplicationReceiptData {
   email: string;
   cv_file_name: string;
   cv_size_bytes: number;
-  event: { title: string; starts_at: string; location: string };
+  /** What was applied to. Discriminated, because an event has a date and a
+   * venue and a position has a category and a closing date — the receipt shows
+   * whichever the target actually has. */
+  target:
+    | { kind: "event"; title: string; starts_at: string; location: string | null }
+    | { kind: "position"; title: string; category: string; closes_at: string | null };
   answers: { prompt: string; answer_text: string }[];
 }
 
@@ -42,7 +48,7 @@ export type SubmitApplicationResult = FunctionResult<SubmitApplicationResponse>;
  * missing answers.
  */
 export async function submitApplication({
-  eventId,
+  target,
   token,
   name,
   email,
@@ -50,7 +56,7 @@ export async function submitApplication({
   questionsFingerprint,
   cv,
 }: {
-  eventId: string;
+  target: ApplicationTarget;
   token: string;
   name: string;
   email: string;
@@ -65,7 +71,9 @@ export async function submitApplication({
     body.append(
       "payload",
       JSON.stringify({
-        event_id: eventId,
+        // Exactly one of the two, which the Edge Function, the RPC and the
+        // one_target CHECK constraints all require.
+        ...(target.kind === "event" ? { event_id: target.id } : { position_id: target.id }),
         name,
         email,
         answers,
@@ -90,7 +98,7 @@ export function applicationErrorMessage(failure: FunctionFailure): string {
 
   switch (failure.code) {
     case "duplicate":
-      return "You've already applied for this event with that email address. Check your inbox for your receipt — you don't need to apply again.";
+      return "You've already applied with that email address. Check your inbox for your receipt — you don't need to apply again.";
     case "invalid":
       // Covers the questions-changed, bad-answer and bad-CV cases, each of
       // which the server explains specifically.

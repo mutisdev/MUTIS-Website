@@ -10,32 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -197,6 +172,13 @@ export type Database = {
           question_prompt?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "application_answers_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "application_cv_retention"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "application_answers_application_id_fkey"
             columns: ["application_id"]
@@ -524,9 +506,10 @@ export type Database = {
           cv_path: string | null
           cv_size_bytes: number
           email: string
-          event_id: string
+          event_id: string | null
           id: string
           name: string
+          position_id: string | null
           reference_code: string
           status: string
           submitted_at: string
@@ -536,9 +519,10 @@ export type Database = {
           cv_path?: string | null
           cv_size_bytes: number
           email: string
-          event_id: string
+          event_id?: string | null
           id?: string
           name: string
+          position_id?: string | null
           reference_code: string
           status?: string
           submitted_at?: string
@@ -548,9 +532,10 @@ export type Database = {
           cv_path?: string | null
           cv_size_bytes?: number
           email?: string
-          event_id?: string
+          event_id?: string | null
           id?: string
           name?: string
+          position_id?: string | null
           reference_code?: string
           status?: string
           submitted_at?: string
@@ -570,33 +555,43 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "event_applications_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       event_questions: {
         Row: {
           created_at: string
-          event_id: string
+          event_id: string | null
           id: string
           options: Json
           position: number
+          position_id: string | null
           prompt: string
           question_type: string
         }
         Insert: {
           created_at?: string
-          event_id: string
+          event_id?: string | null
           id?: string
           options?: Json
           position?: number
+          position_id?: string | null
           prompt: string
           question_type: string
         }
         Update: {
           created_at?: string
-          event_id?: string
+          event_id?: string | null
           id?: string
           options?: Json
           position?: number
+          position_id?: string | null
           prompt?: string
           question_type?: string
         }
@@ -613,6 +608,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_questions_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
             referencedColumns: ["id"]
           },
         ]
@@ -936,16 +938,19 @@ export type Database = {
       }
       page_backgrounds: {
         Row: {
+          crop: Json | null
           image_url: string | null
           page_key: string
           updated_at: string
         }
         Insert: {
+          crop?: Json | null
           image_url?: string | null
           page_key: string
           updated_at?: string
         }
         Update: {
+          crop?: Json | null
           image_url?: string | null
           page_key?: string
           updated_at?: string
@@ -1083,6 +1088,45 @@ export type Database = {
           id?: string
           spotify_url?: string
           thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      positions: {
+        Row: {
+          applications_open: boolean
+          category: string
+          closes_at: string | null
+          created_at: string
+          description: string
+          display_order: number
+          id: string
+          is_published: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          applications_open?: boolean
+          category: string
+          closes_at?: string | null
+          created_at?: string
+          description: string
+          display_order?: number
+          id?: string
+          is_published?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          applications_open?: boolean
+          category?: string
+          closes_at?: string | null
+          created_at?: string
+          description?: string
+          display_order?: number
+          id?: string
+          is_published?: boolean
+          title?: string
           updated_at?: string
         }
         Relationships: []
@@ -1423,6 +1467,14 @@ export type Database = {
       }
     }
     Views: {
+      application_cv_retention: {
+        Row: {
+          cv_path: string | null
+          id: string | null
+          retention_anchor: string | null
+        }
+        Relationships: []
+      }
       dashboard_attendance_totals: {
         Row: {
           past_events: number | null
@@ -1516,6 +1568,15 @@ export type Database = {
           unique_visitors: number
         }[]
       }
+      claim_event_reminder: {
+        Args: {
+          p_event_starts_at: string
+          p_reminder_type: string
+          p_signup_id: string
+          p_stale_minutes: number
+        }
+        Returns: string
+      }
       consume_application_rate_limit: {
         Args: { p_bucket: string; p_limit: number; p_window_seconds: number }
         Returns: boolean
@@ -1551,6 +1612,20 @@ export type Database = {
           value: string
           visitors: number
         }[]
+      }
+      submit_application: {
+        Args: {
+          p_answers: Json
+          p_application_id: string
+          p_cv_file_name: string
+          p_cv_path: string
+          p_cv_size_bytes: number
+          p_email: string
+          p_event_id: string
+          p_name: string
+          p_position_id: string
+        }
+        Returns: Json
       }
       submit_event_application: {
         Args: {
@@ -1693,9 +1768,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

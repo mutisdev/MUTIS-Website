@@ -1,6 +1,9 @@
 import { Link } from "react-router";
 import { useReveal } from "@/app/hooks/useReveal";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
+// Quoted rather than hardcoded, so the notice can't drift from what
+// purge-event-cvs actually does.
+import { CV_RETENTION_DAYS } from "@shared/eventApplications";
 
 export function Privacy() {
   useReveal();
@@ -33,8 +36,8 @@ export function Privacy() {
             <h2>What we collect</h2>
             <p>
               MUTIS collects information you submit directly through forms on this site — the membership sign-up,
-              event sign-ups, event feedback, the contact form, sponsorship enquiries, and the alumni directory
-              registration. Each form only asks for what it needs to do its job (e.g. the alumni form asks for your
+              event sign-ups, applications for events and for positions and schemes, event feedback, the contact
+              form, sponsorship enquiries, and the alumni directory registration. Each form only asks for what it needs to do its job (e.g. the alumni form asks for your
               career details so we can feature you in the network directory).
             </p>
 
@@ -68,6 +71,26 @@ export function Privacy() {
               membership records by email, so we can see how many events each member has signed up for — including
               events you signed up for before becoming a member. We also count how many sign-ups come from people
               who aren't members yet, as a single number.
+            </p>
+
+            <h2>Applications, and your CV</h2>
+            <p>
+              Some events, and every position or scheme listed under{" "}
+              <Link to="/opportunities">Opportunities</Link>, are applied for rather than simply signed up to.
+              An application asks for your name, your University of Manchester email, your answers to the
+              questions on that form, and your CV as a PDF.
+            </p>
+            <p>
+              Your CV is stored privately — never published, never attached to an email, and never linked from
+              one. Only MUTIS committee members with admin access can open it, through a short-lived link, and
+              every time one is opened we record who opened it. We delete the file{" "}
+              {CV_RETENTION_DAYS} days after the event takes place or the application round closes; your
+              application, your answers and the CV's file name are kept as the record of what was submitted, but
+              the file itself is gone.
+            </p>
+            <p>
+              A receipt confirms what we received. It is not an offer of a place — your answers still have to be
+              read.
             </p>
 
             <h2>Event feedback</h2>

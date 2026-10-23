@@ -12,6 +12,7 @@ import {
   CV_RETENTION_DAYS,
   validateAnswer,
   type ApplicationQuestion,
+  type ApplicationTarget,
 } from "@shared/eventApplications";
 import {
   applicationErrorMessage,
@@ -22,7 +23,9 @@ import { CvField } from "./CvField";
 import { QuestionField } from "./QuestionField";
 
 interface ApplicationFormProps {
-  eventId: string;
+  /** What is being applied to — an event in application mode, or a position
+   * listing on the Opportunities page. */
+  target: ApplicationTarget;
   questions: ApplicationQuestion[];
   fingerprint: string;
   onSubmitted: (receipt: ApplicationReceiptData, emailed: boolean) => void;
@@ -31,13 +34,14 @@ interface ApplicationFormProps {
 /**
  * The public application form: name, email, the admin's questions in position
  * order, and a mandatory CV. Replaces the standard sign-up form for events in
- * application mode; events that aren't keep SignupForm untouched.
+ * application mode (events that aren't keep SignupForm untouched), and is the
+ * only form a position listing has.
  *
  * Answers are controlled state (rather than read off the DOM on submit, as the
  * older forms do) because a failed submission must not lose what someone typed —
  * these answers can be several paragraphs, not a name and an email.
  */
-export function ApplicationForm({ eventId, questions, fingerprint, onSubmitted }: ApplicationFormProps) {
+export function ApplicationForm({ target, questions, fingerprint, onSubmitted }: ApplicationFormProps) {
   const { status, error, submitting, fail, succeed, onFormInput } = useFormStatus();
   const { captchaToken, resetCaptcha, captchaProps } = useCaptcha(fail);
 
@@ -109,7 +113,7 @@ export function ApplicationForm({ eventId, questions, fingerprint, onSubmitted }
     );
 
     const result = await submitApplication({
-      eventId,
+      target,
       token: captchaToken,
       name,
       email: normaliseEmail(email),

@@ -42,6 +42,11 @@ export const ROUTE_META: Record<string, Meta> = {
     description:
       "Flagship conferences, the UK Student Finance Summit, the M&A Challenge, and partner sessions that put MUTIS members in the room with the firms hiring them.",
   },
+  "/opportunities": {
+    title: "Opportunities: Positions & Schemes | MUTIS Finance Society",
+    description:
+      "Open positions and schemes at MUTIS: committee roles, MEIF desks, and structured programmes you can apply for as a University of Manchester student.",
+  },
   "/meif": {
     title: "MEIF: Manchester Ethical Investment Fund | MUTIS Finance Society",
     description:
@@ -107,7 +112,7 @@ export const ROUTE_META: Record<string, Meta> = {
     description:
       "Missed a talk or panel? Recordings of selected MUTIS events, published for members to catch up in their own time.",
   },
-  // Client-side redirect stub (see SEO-AUDIT.md 2.5) — points crawlers at the
+  // Client-side redirect stub — points crawlers at the
   // real destination instead of letting them index an empty transitional page.
   "/alumni": {
     title: "Network | MUTIS Finance Society",

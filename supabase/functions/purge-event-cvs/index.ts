@@ -3,13 +3,23 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { hasWebhookSecret } from "../_shared/sendEmail.ts";
 import { CV_BUCKET, CV_RETENTION_DAYS } from "../_shared/eventApplications.ts";
 
-// Deletes applicants' CVs once their event is long past. Called daily by
-// pg_cron (see the schedule migration), authorised by the x-webhook-secret
-// header against the Vault secret, exactly like send-event-reminders.
+// Deletes applicants' CVs once the thing they applied to is long past. Called
+// daily by pg_cron (see the schedule migration), authorised by the
+// x-webhook-secret header against the Vault secret, exactly like
+// send-event-reminders.
 //
 // The cut-off comes from CV_RETENTION_DAYS, which lives only in
 // _shared/eventApplications.ts — the cron schedule says how often to look, never
 // how old is too old, so the two can't drift apart.
+//
+// WHERE the clock starts from is the other half, and it differs by target, so
+// it lives in public.application_cv_retention: an event anchors on its
+// starts_at, a position on its closes_at, and a position with no closing date
+// on the application's own submitted_at, so an open-ended listing still can't
+// hold a CV forever. This function reads that view rather than joining to
+// events itself — the old `events!inner(starts_at)` embed was an INNER join, so
+// the moment event_id became nullable every position application would have
+// silently dropped out of this sweep and kept its CV indefinitely.
 //
 // Only the file goes. The application row, its answers, its reference code and
 // the CV's file name all stay as the permanent record; cv_path is nulled, which
@@ -43,11 +53,13 @@ Deno.serve(async (req: Request) => {
   // page is always fresh. A row that fails keeps its cv_path, so `attempts`
   // bounds the loop instead of it spinning on the same failure.
   for (let attempt = 0; attempt < 50; attempt++) {
+    // The view already excludes rows with a null cv_path, so a row whose
+    // cv_path this sweep clears drops straight out of it — exactly as it
+    // dropped out of the old filter.
     const { data: rows, error } = await admin
-      .from("event_applications")
-      .select("id, cv_path, events!inner(starts_at)")
-      .not("cv_path", "is", null)
-      .lt("events.starts_at", cutoff)
+      .from("application_cv_retention")
+      .select("id, cv_path")
+      .lt("retention_anchor", cutoff)
       .limit(BATCH_SIZE);
 
     if (error) {

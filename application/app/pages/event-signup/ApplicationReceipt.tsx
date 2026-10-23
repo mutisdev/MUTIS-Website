@@ -48,17 +48,37 @@ export function ApplicationReceipt({ receipt, emailed }: ApplicationReceiptProps
 
       <dl className="application-receipt-details">
         <div>
-          <dt>Event</dt>
-          <dd>{receipt.event.title}</dd>
+          <dt>{receipt.target.kind === "event" ? "Event" : "Opportunity"}</dt>
+          <dd>{receipt.target.title}</dd>
         </div>
-        <div>
-          <dt>Date</dt>
-          <dd>{dateTimeFormat.format(new Date(receipt.event.starts_at))}</dd>
-        </div>
-        <div>
-          <dt>Location</dt>
-          <dd>{receipt.event.location}</dd>
-        </div>
+        {/* An event has a date and a venue; a position has a category and
+            maybe a closing date. Only the rows the target actually has are
+            shown, rather than empty ones. */}
+        {receipt.target.kind === "event" ? (
+          <>
+            <div>
+              <dt>Date</dt>
+              <dd>{dateTimeFormat.format(new Date(receipt.target.starts_at))}</dd>
+            </div>
+            <div>
+              <dt>Location</dt>
+              <dd>{receipt.target.location}</dd>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <dt>Category</dt>
+              <dd>{receipt.target.category}</dd>
+            </div>
+            {receipt.target.closes_at && (
+              <div>
+                <dt>Closes</dt>
+                <dd>{dateTimeFormat.format(new Date(receipt.target.closes_at))}</dd>
+              </div>
+            )}
+          </>
+        )}
         <div>
           <dt>Name</dt>
           <dd>{receipt.name}</dd>

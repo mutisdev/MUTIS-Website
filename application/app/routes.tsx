@@ -29,6 +29,8 @@ import { Attendance } from "./pages/Attendance";
 import { Media } from "./pages/Media";
 import { Gallery } from "./pages/Gallery";
 import { Recordings } from "./pages/Recordings";
+import { Opportunities } from "./pages/Opportunities";
+import { PositionApply } from "./pages/PositionApply";
 
 // NOTE: We intentionally avoid wrapping <Outlet/> in a transformed motion.div.
 // The cinematic homepage relies on `position: sticky` inside `pin-wrap`, which
@@ -93,6 +95,10 @@ export const router = createBrowserRouter([
               {
                 path: "events",
                 lazy: () => import("./admin/pages/Events").then((m) => ({ Component: m.Events })),
+              },
+              {
+                path: "positions",
+                lazy: () => import("./admin/pages/Positions").then((m) => ({ Component: m.Positions })),
               },
               {
                 path: "alumni",
@@ -183,6 +189,8 @@ export const router = createBrowserRouter([
       { path: "team", Component: Team },
       { path: "events", Component: Events },
       { path: "events/:eventId/signup", Component: EventSignup },
+      { path: "opportunities", Component: Opportunities },
+      { path: "opportunities/:positionId", Component: PositionApply },
       { path: "sponsors", Component: Sponsors },
       { path: "articles", Component: Articles },
       { path: "articles/:id", Component: ArticleDetail },

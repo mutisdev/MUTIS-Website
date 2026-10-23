@@ -229,6 +229,57 @@ export function eventEmailParams(
   };
 }
 
+/** One label/value row of the application receipt's detail table, in the same
+ * markup the template's own hardcoded rows used. */
+function detailRow(label: string, value: string): string {
+  return (
+    `<tr>` +
+    `<td style="padding:6px 0; font-size:14px; color:#666666;">${escapeHtml(label)}</td>` +
+    `<td style="padding:6px 0; font-size:14px; color:#0B2545;">${escapeHtml(value)}</td>` +
+    `</tr>`
+  );
+}
+
+/**
+ * The kind-specific rows of the application receipt's detail table, as one
+ * pre-escaped block — the same approach videoDetailsBlock() takes, and the
+ * reason renderTemplate has a SafeHtml escape hatch at all.
+ *
+ * There is one receipt template for both kinds of application rather than two,
+ * so the parts that must never drift — the "this isn't a confirmed place"
+ * panel, the reference/name/email/CV table, the answers block and the privacy
+ * footer — physically cannot.
+ *
+ * Emits exactly the Date/Time/Location rows the template used to hardcode, so
+ * an event receipt renders byte-identically to before.
+ */
+export function eventDetailRows(event: EmailEvent): SafeHtml {
+  const start = new Date(event.starts_at);
+  const startTime = timeFormat.format(start);
+  return {
+    html:
+      detailRow("Date", dateFormat.format(start)) +
+      detailRow(
+        "Time",
+        event.ends_at ? `${startTime} – ${timeFormat.format(new Date(event.ends_at))}` : startTime
+      ) +
+      detailRow("Location", event.location ?? ""),
+  };
+}
+
+/** The same, for a position: its category, and a closing date only when it has
+ * one — an open-ended listing shows no Closes row at all rather than an empty
+ * or invented one. */
+export function positionDetailRows(position: {
+  category: string;
+  closes_at: string | null;
+}): SafeHtml {
+  const closes = position.closes_at
+    ? detailRow("Closes", dateFormat.format(new Date(position.closes_at)))
+    : "";
+  return { html: detailRow("Category", position.category) + closes };
+}
+
 function timingSafeEqual(a: string, b: string) {
   if (a.length !== b.length) return false;
   let diff = 0;
