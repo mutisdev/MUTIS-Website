@@ -204,28 +204,33 @@ export function PositionApply() {
 
       <section className="page-section">
         <div className="inner">
-          <div className="event-signup-meta r-up">
-            <span>{position.category}</span>
-            <span>{positionStatusLabel(position)}</span>
+          {/* One measure for the whole stack. Without it each child stops at its
+              own max-width and the description, the lede and the receipt all end
+              at different places — see .position-apply-column. */}
+          <div className="position-apply-column">
+            <div className="event-signup-meta r-up">
+              <span>{position.category}</span>
+              <span>{positionStatusLabel(position)}</span>
+            </div>
+
+            <div
+              className="article-body r-up"
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(position.description) }}
+            />
+
+            <hr className="modal-divider" />
+
+            <div className="page-eyebrow r-up"><span className="bar" />Apply</div>
+            <h2 className="r-up">Apply for this position</h2>
+            {open && !receipt && (
+              <p className="lede r-up" style={{ marginBottom: 0 }}>
+                Applications are read after the round closes, so this is an application rather than a sign-up.
+                You'll get a receipt straight away and hear from us once we've read it.
+              </p>
+            )}
+
+            {renderFormSlot()}
           </div>
-
-          <div
-            className="article-body r-up"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(position.description) }}
-          />
-
-          <hr className="modal-divider" />
-
-          <div className="page-eyebrow r-up"><span className="bar" />Apply</div>
-          <h2 className="r-up">Apply for this position</h2>
-          {open && !receipt && (
-            <p className="lede r-up" style={{ marginBottom: 0 }}>
-              Applications are read after the round closes, so this is an application rather than a sign-up.
-              You'll get a receipt straight away and hear from us once we've read it.
-            </p>
-          )}
-
-          {renderFormSlot()}
         </div>
       </section>
     </>

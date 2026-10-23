@@ -881,6 +881,18 @@
   padding: 20px; background: var(--surface-alt, #f2f3ee);
 }
 
+/* The apply column on a position page.
+   The event apply page gets its measure for free: its content is the right half
+   of a .split beside the poster, so every child is narrower than its own
+   max-width and they all fill the same column. A position has no poster, so its
+   content sat directly in .inner at the full 1240px and each child stopped at a
+   different cap — the heading at 1240, .lede at 680, .article-body at 720,
+   .application-receipt at 640, and .event-signup-closed at no cap at all. Five
+   different right edges down one stack.
+   640px because that is the narrowest of those caps, so every one of them fills
+   this column exactly rather than being capped again inside it. */
+.position-apply-column { max-width: 640px; }
+
 /* ==========================================================
    Event application mode (requires_application events)
    The CV row on the form, and the receipt shown after submitting.
