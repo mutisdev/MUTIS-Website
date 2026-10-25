@@ -5,6 +5,7 @@ import { useReveal } from "@/app/hooks/useReveal";
 import { usePageBackground } from "@/app/hooks/usePageBackgrounds";
 import { PageHeroBackdrop } from "@/app/components/PageHeroBackdrop";
 import { htmlToExcerpt } from "@/app/lib/htmlExcerpt";
+import { externalUrlHost } from "@/app/lib/externalEventUrl";
 import { SITE_URL } from "@/app/hooks/usePageMeta";
 import { useSiteSettings } from "@/app/hooks/useSiteSettings";
 import { eventEndTime, hasEventEnded } from "@shared/eventStatus";
@@ -98,7 +99,9 @@ export function Events() {
 
   // Event JSON-LD, built live from the same Supabase query above — not
   // hardcoded. Each event now has its own page at /events/:id/signup, so
-  // `url` points there instead of the listing page.
+  // `url` points there instead of the listing page — except for an event that
+  // registers off-site, where the other site's page is the one a search result
+  // should send people to.
   const eventsJsonLd =
     upcomingEvents.length > 0
       ? {
@@ -115,7 +118,7 @@ export function Events() {
             },
             description: htmlToExcerpt(ev.description, 300),
             image: ev.cover_image_url ?? undefined,
-            url: `${SITE_URL}/events/${ev.id}/signup`,
+            url: ev.external_url ?? `${SITE_URL}/events/${ev.id}/signup`,
           })),
         }
       : null;
@@ -205,6 +208,13 @@ export function Events() {
 }
 
 function EventCard({ event: ev, past = false }: { event: EventRow; past?: boolean }) {
+  // An event with an external_url takes its sign-ups on another site, so the
+  // card's own action points there rather than at a form this site doesn't
+  // have. signup_enabled still means "registration is open", and a past event
+  // keeps the internal details link — the other site's page will be gone.
+  const registersOffsite = !past && Boolean(ev.external_url) && ev.signup_enabled;
+  const offsiteHost = ev.external_url ? externalUrlHost(ev.external_url) : null;
+
   return (
     <div className="dark-card r-up">
       {ev.cover_image_url && (
@@ -227,8 +237,20 @@ function EventCard({ event: ev, past = false }: { event: EventRow; past?: boolea
       )}
       <p className="excerpt">{htmlToExcerpt(ev.description)}</p>
       <div className="foot">
-        <span>{past ? "Event ended" : ev.signup_enabled ? "Signup open" : "Details"}</span>
-        <Link to={`/events/${ev.id}/signup`} className="more" style={{ textDecoration: "none" }}>View details →</Link>
+        <span>{past ? "Event ended" : registersOffsite ? "Registration off-site" : ev.signup_enabled ? "Signup open" : "Details"}</span>
+        {registersOffsite && ev.external_url ? (
+          <a
+            href={ev.external_url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="more"
+            style={{ textDecoration: "none" }}
+          >
+            {offsiteHost ? `Register on ${offsiteHost}` : "Register"} ↗
+          </a>
+        ) : (
+          <Link to={`/events/${ev.id}/signup`} className="more" style={{ textDecoration: "none" }}>View details →</Link>
+        )}
       </div>
     </div>
   );
