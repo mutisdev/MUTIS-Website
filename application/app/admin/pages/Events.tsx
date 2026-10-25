@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import DOMPurify from "dompurify";
-import { Loader2, Plus, Pencil, Trash2, Search, ClipboardList } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Search, ClipboardList, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { useAdminMutation } from "../useAdminMutation";
@@ -24,6 +24,7 @@ import {
 import { Link } from "react-router";
 import { useAuth } from "../AuthProvider";
 import { MAX_VIDEO_DETAILS_CHARS, validateVideoDetails } from "@shared/eventVideo";
+import { MAX_EXTERNAL_URL_LENGTH, validateExternalUrl } from "@/app/lib/externalEventUrl";
 import { VideoDetailsPreview } from "../components/VideoDetailsPreview";
 import {
   loadEventVideoDetails,
@@ -46,6 +47,9 @@ type FormState = {
   signup_enabled: boolean;
   is_published: boolean;
   requires_application: boolean;
+  /** Where sign-ups happen when they don't happen here. Blank for an event
+   * that takes its sign-ups (or applications) on this site. */
+  external_url: string;
   /** Staged question drafts; only written when the event is saved. */
   questions: QuestionDraft[];
   /** Video conference details. Staged like the questions, and written to
@@ -66,6 +70,7 @@ const EMPTY_FORM: FormState = {
   signup_enabled: false,
   is_published: true,
   requires_application: false,
+  external_url: "",
   questions: [],
   video_enabled: false,
   video_body: "",
@@ -124,6 +129,7 @@ export function Events() {
   // off without the box having been touched.
   const [savedVideo, setSavedVideo] = useState<EventVideoDetailsRow | null>(null);
   const [videoError, setVideoError] = useState("");
+  const [externalUrlError, setExternalUrlError] = useState("");
 
   const fetchRows = async () => {
     const [eventsRes, statsRes, applicationsRes] = await Promise.all([
@@ -234,6 +240,7 @@ export function Events() {
     setSavedQuestions(questionRows);
     setSavedVideo(videoRow);
     resetQuestionErrors();
+    setExternalUrlError("");
     setForm({
       title: row.title,
       description: row.description,
@@ -246,6 +253,7 @@ export function Events() {
       signup_enabled: row.signup_enabled,
       is_published: row.is_published,
       requires_application: row.requires_application,
+      external_url: row.external_url ?? "",
       questions: draftsFromRows(questionRows),
       video_enabled: videoRow?.is_enabled ?? false,
       video_body: videoRow?.body_text ?? "",
@@ -259,6 +267,18 @@ export function Events() {
     if (!form.title.trim() || isHtmlEmpty(sanitizedDescription) || !form.location.trim() || !form.starts_at) return;
     if (form.ends_at && new Date(form.ends_at) < new Date(form.starts_at)) {
       toast.error("End time can't be before the start time.");
+      return;
+    }
+
+    // Off-site mode's own rule. Checked before the question rules because an
+    // event with an external link has no questions to check: the database
+    // forbids the two modes together, so the drawer never offers both at once.
+    setExternalUrlError("");
+    const externalUrl = form.external_url.trim();
+    const externalUrlMessage = validateExternalUrl(externalUrl);
+    if (externalUrlMessage) {
+      setExternalUrlError(externalUrlMessage);
+      toast.error(externalUrlMessage);
       return;
     }
 
@@ -301,6 +321,7 @@ export function Events() {
         signup_enabled: form.signup_enabled,
         is_published: form.is_published,
         requires_application: form.requires_application,
+        external_url: externalUrl || null,
       };
       // The event row goes through updateRow/insertRow so the audit log picks up
       // the requires_application change in its before/after snapshot for free.
@@ -362,7 +383,30 @@ export function Events() {
     { key: "title", label: "Title", render: (r) => r.title, sortValue: (r) => r.title },
     { key: "starts_at", label: "Starts", render: (r) => formatDateTime(r.starts_at), sortValue: (r) => r.starts_at },
     { key: "location", label: "Location", render: (r) => r.location, exportValue: (r) => r.location },
-    { key: "signup", label: "Signup", render: (r) => (r.signup_enabled ? <StatusBadge status="confirmed" /> : "—"), exportValue: (r) => (r.signup_enabled ? "Yes" : "No") },
+    {
+      key: "signup",
+      label: "Signup",
+      // An off-site event's sign-ups are someone else's list, so the badge says
+      // where they go rather than implying a count this panel could show.
+      exportValue: (r) => (r.external_url ? r.external_url : r.signup_enabled ? "Yes" : "No"),
+      render: (r) =>
+        r.external_url ? (
+          <a
+            href={r.external_url}
+            target="_blank"
+            rel="noreferrer noopener"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-[5px] text-accent underline"
+          >
+            <ExternalLink className="h-[13px] w-[13px]" />
+            Off-site
+          </a>
+        ) : r.signup_enabled ? (
+          <StatusBadge status="confirmed" />
+        ) : (
+          "—"
+        ),
+    },
     { key: "capacity", label: "Capacity", render: (r) => (r.capacity != null ? `${signupCounts.get(r.id) ?? 0} / ${r.capacity}` : `${signupCounts.get(r.id) ?? 0} / unlimited`), exportValue: (r) => (r.capacity != null ? `${signupCounts.get(r.id) ?? 0} / ${r.capacity}` : `${signupCounts.get(r.id) ?? 0} / unlimited`) },
     {
       key: "applications",
@@ -517,9 +561,58 @@ export function Events() {
 
           <div className="flex items-center justify-between rounded-[12px] border border-border px-[16px] py-[14px]">
             <span className="text-[13px] font-medium text-foreground">
-              {form.requires_application ? "Applications open" : "Signup enabled"}
+              {form.requires_application
+                ? "Applications open"
+                : form.external_url.trim()
+                  ? "Registration open"
+                  : "Signup enabled"}
             </span>
             <PublishToggle checked={form.signup_enabled} onChange={(v) => setForm({ ...form, signup_enabled: v })} />
+          </div>
+
+          {/*
+            Off-site registration. Blank for every existing event, so nothing
+            changes until an admin pastes a link. With one set, the public event
+            card and the event page both send people to that URL instead of
+            showing a form, and this site collects nothing: no sign-up row, no
+            confirmation email, no reminder. Mutually exclusive with application
+            mode — in the drawer below, and in the
+            events_external_url_excludes_application CHECK.
+          */}
+          <div className="flex flex-col gap-[10px] rounded-[12px] border border-border px-[16px] py-[14px]">
+            <div className="min-w-0">
+              <span className="text-[13px] font-medium text-foreground">Register on another site</span>
+              <p className="mt-[4px] text-[11px] leading-[1.6] text-muted-foreground">
+                For an event run on someone else's platform — a partner's portal, Eventbrite, a form. Paste the
+                link and the event card registers there instead of here. Leave blank to sign people up on this
+                site.
+              </p>
+            </div>
+            <input
+              type="url"
+              inputMode="url"
+              placeholder="https://www.eventbrite.co.uk/e/…"
+              value={form.external_url}
+              maxLength={MAX_EXTERNAL_URL_LENGTH}
+              disabled={form.requires_application}
+              aria-label="External registration link"
+              aria-invalid={externalUrlError ? true : undefined}
+              aria-describedby="external-url-help"
+              onChange={(e) => {
+                setExternalUrlError("");
+                setForm((f) => ({ ...f, external_url: e.target.value }));
+              }}
+              className={`w-full rounded-[10px] border bg-input px-[14px] py-[12px] text-[15px]! text-foreground outline-hidden transition-colors focus:border-accent disabled:cursor-not-allowed disabled:opacity-40 ${externalUrlError ? "border-destructive" : "border-input"}`}
+            />
+            {externalUrlError ? (
+              <p className="text-[11px] text-destructive" role="alert">{externalUrlError}</p>
+            ) : (
+              <p id="external-url-help" className="text-[11px] leading-[1.6] text-muted-foreground">
+                {form.requires_application
+                  ? "Unavailable while this event requires an application — an application is reviewed here, so it can't be handed to another site."
+                  : "Must start with https://. The button shows the site's name, and only appears while the toggle above is on."}
+              </p>
+            )}
           </div>
 
           {/*
@@ -534,12 +627,14 @@ export function Events() {
               <div className="min-w-0">
                 <span className="text-[13px] font-medium text-foreground">Require application</span>
                 <p className="mt-[4px] text-[11px] leading-[1.6] text-muted-foreground">
-                  Replaces the one-click signup with your own questions plus a CV upload. Applicants get a
-                  receipt, not a confirmed place.
+                  {form.external_url.trim()
+                    ? "Unavailable while this event registers on another site — clear the link above to collect applications here."
+                    : "Replaces the one-click signup with your own questions plus a CV upload. Applicants get a receipt, not a confirmed place."}
                 </p>
               </div>
               <PublishToggle
                 checked={form.requires_application}
+                disabled={Boolean(form.external_url.trim())}
                 label={form.requires_application ? "Application required" : "Application not required"}
                 onChange={(v) => setForm({ ...form, requires_application: v })}
               />
@@ -576,6 +671,9 @@ export function Events() {
                 <p className="mt-[4px] text-[11px] leading-[1.6] text-muted-foreground">
                   Teams, Zoom, Meet — the joining link plus any meeting ID, passcode or notes. Emailed to
                   confirmed attendees only, in the confirmation and in the reminders. Never shown on the website.
+                  {form.external_url.trim()
+                    ? " This event registers on another site, so nobody signs up here and these details would reach no one — put them on the other site instead."
+                    : ""}
                 </p>
               </div>
               <PublishToggle

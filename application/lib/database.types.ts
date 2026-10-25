@@ -710,6 +710,7 @@ export type Database = {
           created_at: string
           description: string
           ends_at: string | null
+          external_url: string | null
           id: string
           is_published: boolean
           location: string
@@ -727,6 +728,7 @@ export type Database = {
           created_at?: string
           description: string
           ends_at?: string | null
+          external_url?: string | null
           id?: string
           is_published?: boolean
           location: string
@@ -744,6 +746,7 @@ export type Database = {
           created_at?: string
           description?: string
           ends_at?: string | null
+          external_url?: string | null
           id?: string
           is_published?: boolean
           location?: string
