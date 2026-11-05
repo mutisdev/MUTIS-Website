@@ -19,8 +19,10 @@ export function AuditLog() {
   const [rows, setRows] = usePageCache<LogRow[]>("admin:auditLog:rows", []);
   const [loading, setLoading] = useState(!hasCached("admin:auditLog:rows"));
   const [tableFilter, setTableFilter] = usePageCache("admin:auditLog:tableFilter", "all");
-  // 'view' covers reads worth recording — currently an admin opening an
-  // applicant's CV (see the event_applications migration).
+  // 'view' covers reads worth recording — currently an admin reaching an
+  // applicant's CV (see the event_applications migration). `after.access` says
+  // how: 'view' or 'download' for one CV opened from the applications page,
+  // 'bulk_download' for one of a filtered set zipped up in a single export.
   const [actionFilter, setActionFilter] = usePageCache<"all" | "insert" | "update" | "delete" | "view">("admin:auditLog:actionFilter", "all");
   const [search, setSearch] = usePageCache("admin:auditLog:search", "");
   const [detail, setDetail] = useState<LogRow | null>(null);

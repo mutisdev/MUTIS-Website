@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Download, FileText, Loader2, Search, ShieldAlert, Trash2 } from "lucide-react";
+import { Download, FileArchive, FileText, Loader2, Search, ShieldAlert, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import {
@@ -18,6 +18,7 @@ import { useAuth } from "../AuthProvider";
 import { Drawer } from "../components/Drawer";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DataTable, downloadCsv, type DataTableColumn } from "../components/DataTable";
+import { buildCvArchive, type CvArchiveEntry } from "../lib/cvArchive";
 import { StatusBadge } from "../components/StatusBadge";
 import { usePageCache, hasCached } from "../usePageCache";
 
@@ -85,6 +86,10 @@ export function Applications() {
   const [cvLoadingId, setCvLoadingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Application | null>(null);
   const [deleting, setDeleting] = useState(false);
+  /** Set while the CV archive is being built, so the button can count up. */
+  const [archiving, setArchiving] = useState<{ done: number; total: number } | null>(null);
+  /** True between pressing "Download CVs" and confirming it. */
+  const [confirmArchive, setConfirmArchive] = useState(false);
   // Bumped to force the row effect below to re-run. Used after a delete that
   // failed part-way, where the stored row may no longer match what's on screen.
   const [reloadKey, setReloadKey] = useState(0);
@@ -93,6 +98,10 @@ export function Applications() {
   const selectedPosition = positions.find((p) => p.id === positionId) ?? null;
   /** The chosen target's title, for the heading and the CSV filename. */
   const selectedTitle = selectedEvent?.title ?? selectedPosition?.title ?? "";
+  /** Shared by both exports, so the CSV and the CV archive can never end up
+   * named after different things. */
+  const targetSlug =
+    (selectedTitle || "applications").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "event";
 
   // Only events in application mode. An event whose toggle was turned off still
   // appears while it has applications, so past rounds stay reachable.
@@ -423,8 +432,97 @@ export function Applications() {
       application.email,
       ...questionColumns.map((column) => answerFor(application, column)),
     ]);
-    const slug = (selectedTitle || "applications").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    downloadCsv(`applications-${slug || "event"}.csv`, header, rows);
+    downloadCsv(`applications-${targetSlug}.csv`, header, rows);
+  };
+
+  /**
+   * The rows the CV archive would cover: the filtered ones that still have a
+   * CV. A null cv_path means the retention sweep has already taken the file
+   * (the table renders those as "Deleted"), so there is nothing to fetch.
+   */
+  const withCv = useMemo(() => filtered.filter((row) => row.cv_path), [filtered]);
+  /** Exact, not estimated — cv_size_bytes is recorded on every row. */
+  const archiveBytes = useMemo(() => withCv.reduce((total, row) => total + row.cv_size_bytes, 0), [withCv]);
+
+  /**
+   * Downloads the filtered applications' CVs as one zip.
+   *
+   * Scoped to `filtered` for the same reason the CSV is: the search box and the
+   * status dropdown are already the selection mechanism, so "accepted" plus
+   * this button is "give me the shortlist's CVs". No separate row selection to
+   * keep in sync with what's on screen.
+   *
+   * Note this hands over the CVs themselves, which is a deliberate step past
+   * where exportCsv stops — see the note there about a spreadsheet getting
+   * emailed around. Hence the confirmation, and hence an audit entry per
+   * application, exactly as a one-at-a-time download writes.
+   */
+  const downloadCvArchive = async () => {
+    setConfirmArchive(false);
+    const entries: CvArchiveEntry[] = withCv.map((row) => ({
+      id: row.id,
+      name: row.name,
+      referenceCode: row.reference_code,
+      cvPath: row.cv_path!,
+    }));
+    if (entries.length === 0) return;
+
+    setArchiving({ done: 0, total: entries.length });
+    try {
+      // Written before a single byte is fetched, so the record of who looked at
+      // what survives an export that then fails half-way — the same order
+      // openCv uses. One insert rather than N calls to logApplicationAction,
+      // which is per-row; action "view" and the free-form `after` are what that
+      // function already writes, so this needs no migration.
+      const { error: auditError } = await supabase.from("audit_log").insert(
+        withCv.map((row) => ({
+          actor_user_id: session?.user.id ?? null,
+          actor_email: session?.user.email ?? "unknown",
+          table_name: "event_applications",
+          row_id: row.id,
+          action: "view",
+          before: null,
+          after: {
+            cv_path: row.cv_path,
+            event_id: row.event_id,
+            position_id: row.position_id,
+            access: "bulk_download",
+          } as never,
+        }))
+      );
+      // Best-effort, like every other audit write on this page: a logging
+      // failure must not deny the committee the CVs it is entitled to read.
+      if (auditError) console.error("Failed to log bulk CV download", auditError);
+
+      const result = await buildCvArchive(entries, (done, total) => setArchiving({ done, total }));
+
+      if (result.included > 0) {
+        // Same synthetic-anchor dance as downloadCsv. Revoking matters more
+        // here: this blob can be hundreds of megabytes.
+        const url = URL.createObjectURL(result.blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `cvs-${targetSlug}.zip`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+
+      const skipped = filtered.length - withCv.length;
+      const skippedNote = skipped > 0 ? ` ${skipped} had no CV left to download.` : "";
+      if (result.failed.length > 0) {
+        toast.error(
+          `Downloaded ${result.included} of ${entries.length} CVs. Couldn't fetch: ` +
+            `${result.failed.map((f) => f.name).join(", ")}.${skippedNote}`
+        );
+      } else {
+        toast.success(`Downloaded ${result.included} CV${result.included === 1 ? "" : "s"}.${skippedNote}`);
+      }
+    } catch (cause) {
+      console.error("Could not build the CV archive", cause);
+      toast.error("Could not build the CV archive. Try narrowing the list by status and exporting again.");
+    } finally {
+      setArchiving(null);
+    }
   };
 
   const pendingAnswerCount = pendingDelete ? orderedAnswers(pendingDelete).length : 0;
@@ -622,13 +720,37 @@ export function Applications() {
                 pageResetKey={`${eventId}|${statusFilter}|${search}`}
                 toolbar={
                   applications.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={exportCsv}
-                      className="inline-flex items-center gap-[6px] rounded-[10px] border border-border bg-card px-[12px] py-[8px] text-[12px] font-medium text-foreground transition-colors hover:bg-white/[0.03]"
-                    >
-                      Export CSV
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmArchive(true)}
+                        disabled={withCv.length === 0 || archiving !== null}
+                        className="inline-flex items-center gap-[6px] rounded-[10px] border border-border bg-card px-[12px] py-[8px] text-[12px] font-medium text-foreground transition-colors hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card"
+                      >
+                        {archiving ? (
+                          <>
+                            <Loader2 className="h-[14px] w-[14px] animate-spin" />
+                            <span className="tabular-nums">
+                              {archiving.done}/{archiving.total}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <FileArchive className="h-[14px] w-[14px]" />
+                            {withCv.length === 0
+                              ? "No CVs to download"
+                              : `Download ${withCv.length} CV${withCv.length === 1 ? "" : "s"}`}
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={exportCsv}
+                        className="inline-flex items-center gap-[6px] rounded-[10px] border border-border bg-card px-[12px] py-[8px] text-[12px] font-medium text-foreground transition-colors hover:bg-white/[0.03]"
+                      >
+                        Export CSV
+                      </button>
+                    </>
                   ) : undefined
                 }
               />
@@ -774,6 +896,28 @@ export function Applications() {
         requireText={pendingDelete?.name}
         onConfirm={confirmDelete}
         onCancel={() => setPendingDelete(null)}
+      />
+
+      {/* Not destructive, so no requireText — but not a silent click either.
+          These are applicants' CVs leaving the admin session for someone's
+          laptop, and the retention policy that governs them stops at the
+          bucket, so the only thing that can honour it from here on is the
+          person pressing the button. */}
+      <ConfirmDialog
+        open={confirmArchive}
+        title={`Download ${withCv.length} CV${withCv.length === 1 ? "" : "s"}?`}
+        description={
+          `${withCv.length} CV${withCv.length === 1 ? "" : "s"} (${formatFileSize(archiveBytes)}) will be saved ` +
+          "to this device as a zip, named after each applicant. They are personal data: CVs are deleted from " +
+          `the site ${CV_RETENTION_DAYS} days on, so delete the folder once the shortlist is settled. ` +
+          "Every download is recorded in the audit log." +
+          (archiveBytes > 300 * 1024 * 1024
+            ? " This is a large export and the browser may run out of memory — consider filtering by status first."
+            : "")
+        }
+        confirmLabel="Download"
+        onConfirm={() => void downloadCvArchive()}
+        onCancel={() => setConfirmArchive(false)}
       />
     </div>
   );
