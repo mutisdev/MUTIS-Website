@@ -10,6 +10,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { usePageCache, hasCached } from "../usePageCache";
+import { fetchAllRows } from "../lib/fetchAllRows";
 
 type Contact = Database["public"]["Tables"]["contact_submissions"]["Row"];
 type Sponsorship = Database["public"]["Tables"]["sponsorship_enquiries"]["Row"];
@@ -62,7 +63,15 @@ export function Submissions() {
     const [c, s, sg, ev, al] = await Promise.all([
       supabase.from("contact_submissions").select("*"),
       supabase.from("sponsorship_enquiries").select("*"),
-      supabase.from("event_signups").select("*"),
+      // Over 1000 rows, so it has to be paged or the newest sign-ups go missing.
+      fetchAllRows((from, to) =>
+        supabase
+          .from("event_signups")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
       supabase.from("events").select("*"),
       supabase.from("alumni_submissions").select("*"),
     ]);
