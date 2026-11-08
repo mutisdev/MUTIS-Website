@@ -18,6 +18,7 @@
     "@tiptap/starter-kit": "^3.29.2",
     "@vercel/analytics": "^2.0.1",
     "dompurify": "^3.4.13",
+    "jszip": "3.10.1",
     "lucide-react": "0.487.0",
     "mammoth": "^1.12.1",
     "motion": "12.23.24",
